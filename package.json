@@ -1,0 +1,31 @@
+{
+  "name": "sideterm",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A real terminal beside your browser tabs.",
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "scripts": {
+    "build": "vite build && node scripts/build-native.mjs",
+    "build:extension": "vite build",
+    "build:native": "node scripts/build-native.mjs",
+    "install:dev": "npm run build && node scripts/install-dev.mjs",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@xterm/addon-fit": "0.11.0",
+    "@xterm/xterm": "6.0.0",
+    "node-pty": "1.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "22.18.3",
+    "@types/chrome": "0.2.6",
+    "esbuild": "0.28.2",
+    "typescript": "5.9.3",
+    "vite": "8.2.1",
+    "vitest": "4.1.10"
+  }
+}

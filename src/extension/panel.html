@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SideTerm</title>
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="brand"><img class="brand-logo" src="/icons/sideterm.png" alt="" /> SideTerm</div>
+      <div class="connection-state">
+        <span id="terminal-status" role="status" hidden></span>
+        <button id="reconnect-button" class="text-button" type="button" hidden>Reconnect</button>
+      </div>
+    </header>
+
+    <nav class="terminal-toolbar" aria-label="Terminal sessions">
+      <div id="terminal-tabs" class="terminal-tabs" role="tablist"></div>
+      <button id="add-terminal" class="icon-button add-button" type="button" title="New terminal" aria-label="New terminal">+</button>
+      <div class="toolbar-separator"></div>
+      <div class="layout-controls" aria-label="Stack direction">
+        <button id="layout-columns" class="icon-button" type="button" title="Show side by side" aria-label="Show terminals side by side">◫</button>
+        <button id="layout-rows" class="icon-button" type="button" title="Show top and bottom" aria-label="Show terminals top and bottom">☷</button>
+      </div>
+    </nav>
+
+    <main id="terminal-workspace" class="terminal-workspace layout-columns" aria-label="Terminal workspace"></main>
+    <script type="module" src="/panel.ts"></script>
+  </body>
+</html>
