@@ -31,7 +31,7 @@ describe('development host installer', () => {
   })
 
   it('registers with both Brave and the Chrome-compatible macOS lookup path', () => {
-    expect(nativeHostRegistrationDirectories('/Users/test')).toEqual([
+    expect(nativeHostRegistrationDirectories('/Users/test', 'darwin')).toEqual([
       '/Users/test/Library/Application Support/BraveSoftware/Brave-Browser/NativeMessagingHosts',
       '/Users/test/Library/Application Support/Google/Chrome/NativeMessagingHosts'
     ])
@@ -46,7 +46,7 @@ describe('development host installer', () => {
   })
 
   it('finds obsolete Termside and VibeWatch host registrations for cleanup', () => {
-    expect(legacyNativeHostRegistrationPaths('/Users/test')).toEqual([
+    expect(legacyNativeHostRegistrationPaths('/Users/test', 'darwin')).toEqual([
       '/Users/test/Library/Application Support/BraveSoftware/Brave-Browser/NativeMessagingHosts/com.sideterm.terminal.json',
       '/Users/test/Library/Application Support/BraveSoftware/Brave-Browser/NativeMessagingHosts/com.vibewatch.terminal.json',
       '/Users/test/Library/Application Support/Google/Chrome/NativeMessagingHosts/com.sideterm.terminal.json',

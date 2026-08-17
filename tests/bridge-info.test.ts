@@ -25,7 +25,7 @@ describe('createBridgeHello', () => {
         systemSsh: expect.any(Boolean)
       }
     })
-    expect(hello.availableShells).toContain('/bin/zsh')
+    expect(hello.availableShells).toContain(hello.activeShell)
   })
 
   it('uses bash as the Linux fallback shell', () => {
