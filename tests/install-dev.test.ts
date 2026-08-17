@@ -37,6 +37,14 @@ describe('development host installer', () => {
     ])
   })
 
+  it('registers Chrome, Chromium, and Brave on Linux', () => {
+    expect(nativeHostRegistrationDirectories('/home/test', 'linux')).toEqual([
+      '/home/test/.config/google-chrome/NativeMessagingHosts',
+      '/home/test/.config/chromium/NativeMessagingHosts',
+      '/home/test/.config/BraveSoftware/Brave-Browser/NativeMessagingHosts'
+    ])
+  })
+
   it('finds obsolete Termside and VibeWatch host registrations for cleanup', () => {
     expect(legacyNativeHostRegistrationPaths('/Users/test')).toEqual([
       '/Users/test/Library/Application Support/BraveSoftware/Brave-Browser/NativeMessagingHosts/com.sideterm.terminal.json',

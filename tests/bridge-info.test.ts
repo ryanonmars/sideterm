@@ -27,4 +27,11 @@ describe('createBridgeHello', () => {
     })
     expect(hello.availableShells).toContain('/bin/zsh')
   })
+
+  it('uses bash as the Linux fallback shell', () => {
+    const hello = createBridgeHello({ platform: 'linux', environment: {} })
+
+    expect(hello.platform).toBe('Linux')
+    expect(hello.activeShell).toBe('/bin/bash')
+  })
 })

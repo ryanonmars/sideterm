@@ -98,6 +98,20 @@ describe('TerminalSession', () => {
     expect(spawn).toHaveBeenCalledWith('/bin/zsh', ['-l'], expect.objectContaining({ env }))
   })
 
+  it('uses bash as the default Linux shell', () => {
+    const spawn = vi.fn<PtyFactory>(() => new FakePtyProcess())
+    const previousShell = process.env.SHELL
+    delete process.env.SHELL
+    try {
+      const session = new TerminalSession({ spawn, env: { PATH: '/usr/bin' }, platform: 'linux' })
+      session.start({ onData: () => undefined, onExit: () => undefined })
+      expect(spawn).toHaveBeenCalledWith('/bin/bash', ['-l'], expect.any(Object))
+    } finally {
+      if (previousShell === undefined) delete process.env.SHELL
+      else process.env.SHELL = previousShell
+    }
+  })
+
   it('forwards data, input, exit, and safe terminal sizes', () => {
     const child = new FakePtyProcess()
     const session = new TerminalSession({

@@ -33,8 +33,16 @@ export function createNativeHostManifest({ launcherPath, extensionId }) {
   }
 }
 
-/** @param {string} homeDirectory */
-export function nativeHostRegistrationDirectories(homeDirectory) {
+/** @param {string} homeDirectory @param {NodeJS.Platform} [platform] */
+export function nativeHostRegistrationDirectories(homeDirectory, platform = process.platform) {
+  if (platform === 'linux') {
+    return [
+      resolve(homeDirectory, '.config/google-chrome/NativeMessagingHosts'),
+      resolve(homeDirectory, '.config/chromium/NativeMessagingHosts'),
+      resolve(homeDirectory, '.config/BraveSoftware/Brave-Browser/NativeMessagingHosts')
+    ]
+  }
+
   return [
     resolve(
       homeDirectory,
@@ -44,9 +52,9 @@ export function nativeHostRegistrationDirectories(homeDirectory) {
   ]
 }
 
-/** @param {string} homeDirectory */
-export function legacyNativeHostRegistrationPaths(homeDirectory) {
-  return nativeHostRegistrationDirectories(homeDirectory).flatMap((directory) =>
+/** @param {string} homeDirectory @param {NodeJS.Platform} [platform] */
+export function legacyNativeHostRegistrationPaths(homeDirectory, platform = process.platform) {
+  return nativeHostRegistrationDirectories(homeDirectory, platform).flatMap((directory) =>
     LEGACY_HOST_NAMES.map((hostName) => resolve(directory, `${hostName}.json`))
   )
 }
@@ -57,7 +65,9 @@ function shellQuote(value) {
 }
 
 async function install() {
-  if (process.platform !== 'darwin') throw new Error('The development installer currently supports macOS only.')
+  if (process.platform !== 'darwin' && process.platform !== 'linux') {
+    throw new Error('The development installer currently supports macOS and Linux only.')
+  }
 
   const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
   const extensionDirectory = resolve(repositoryRoot, 'dist/extension')
@@ -72,12 +82,15 @@ async function install() {
     throw new Error(`Extension ID mismatch: expected ${EXPECTED_EXTENSION_ID}, received ${extensionId}`)
   }
 
-  const launcher = `#!/bin/zsh\nexec ${shellQuote(process.execPath)} ${shellQuote(nativeHostPath)}\n`
+  const launcher = `#!/bin/sh\nexec ${shellQuote(process.execPath)} ${shellQuote(nativeHostPath)}\n`
   await writeFile(launcherPath, launcher, 'utf8')
   await chmod(launcherPath, 0o755)
 
   const registrationPaths = []
-  for (const registrationDirectory of nativeHostRegistrationDirectories(os.homedir())) {
+  for (const registrationDirectory of nativeHostRegistrationDirectories(
+    os.homedir(),
+    process.platform
+  )) {
     const registrationPath = resolve(registrationDirectory, `${HOST_NAME}.json`)
     await mkdir(registrationDirectory, { recursive: true })
     await writeFile(
@@ -88,7 +101,7 @@ async function install() {
     registrationPaths.push(registrationPath)
   }
 
-  for (const legacyPath of legacyNativeHostRegistrationPaths(os.homedir())) {
+  for (const legacyPath of legacyNativeHostRegistrationPaths(os.homedir(), process.platform)) {
     await rm(legacyPath, { force: true })
   }
 

@@ -1,0 +1,77 @@
+name: Build Linux Bridge
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Bridge version (defaults to package.json)
+        required: false
+        type: string
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  package-linux:
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-22.04
+            asset-architecture: x64
+          - runner: ubuntu-22.04-arm
+            asset-architecture: arm64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.19.0
+          cache: npm
+
+      - name: Install packaging tools
+        run: sudo apt-get update && sudo apt-get install --yes build-essential python3 rpm
+
+      - name: Select release version
+        if: github.event_name == 'release'
+        run: echo "SIDETERM_BRIDGE_VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+
+      - name: Select manual version
+        if: github.event_name == 'workflow_dispatch' && inputs.version != ''
+        env:
+          REQUESTED_VERSION: ${{ inputs.version }}
+        run: |
+          if [[ ! "$REQUESTED_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Bridge version must use numeric major.minor.patch format." >&2
+            exit 1
+          fi
+          echo "SIDETERM_BRIDGE_VERSION=$REQUESTED_VERSION" >> "$GITHUB_ENV"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests and type checking
+        run: npm test && npm run typecheck
+
+      - name: Build Linux packages
+        run: npm run package:linux
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SideTermBridge-linux-${{ matrix.asset-architecture }}
+          path: |
+            release/*.deb
+            release/*.rpm
+            release/*SHA256SUMS.txt
+          if-no-files-found: error
+
+      - name: Attach packages to GitHub release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$GITHUB_REF_NAME" release/*.deb release/*.rpm release/*SHA256SUMS.txt --clobber

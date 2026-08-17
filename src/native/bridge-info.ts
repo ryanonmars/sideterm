@@ -19,7 +19,7 @@ function canExecute(path: string): boolean {
 
 function defaultShell(platform: NodeJS.Platform, environment: NodeJS.ProcessEnv): string {
   if (platform === 'win32') return environment.COMSPEC || 'powershell.exe'
-  return environment.SHELL || '/bin/zsh'
+  return environment.SHELL || (platform === 'linux' ? '/bin/bash' : '/bin/zsh')
 }
 
 function discoverShells(activeShell: string, platform: NodeJS.Platform): string[] {

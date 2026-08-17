@@ -12,7 +12,7 @@ SideTerm keeps a full terminal beside your normal browser tabs, so you can code 
 
 ## Features
 
-- A real macOS login shell powered by SideTerm Bridge
+- A real macOS or Linux login shell powered by SideTerm Bridge
 - Multiple terminal tabs with custom names
 - Side-by-side or top-and-bottom terminal stacks
 - Resizable using the browser's standard side-panel controls
@@ -23,10 +23,12 @@ SideTerm keeps a full terminal beside your normal browser tabs, so you can code 
 
 1. [Add SideTerm from the Chrome Web Store](https://chromewebstore.google.com/detail/sideterm/iibepfapncodkkpognfeamilpdkoimbe).
 2. Open SideTerm and choose **Install SideTerm Bridge**.
-3. Run the downloaded macOS installer, then return to SideTerm and choose **Reconnect**.
+3. Install the downloaded macOS `.pkg`, Linux `.deb`, or Linux `.rpm`, then return to SideTerm and choose **Reconnect**.
 4. Pin SideTerm to the toolbar for quick access.
 
-SideTerm currently supports macOS. [SideTerm Bridge](https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging) connects the browser side panel to your local shell.
+SideTerm supports macOS and 64-bit Linux. [SideTerm Bridge](https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging) connects the browser side panel to your local shell.
+
+On Debian, Ubuntu, and related distributions, install the downloaded package with `sudo apt install ./SideTermBridge-*.deb`. On Fedora and related distributions, use `sudo dnf install ./SideTermBridge-*.rpm`.
 
 ## Using SideTerm
 
@@ -40,7 +42,7 @@ Each new terminal starts in your home folder using your configured login shell. 
 
 ## Privacy and security
 
-SideTerm does not inject scripts into websites and does not request permission to read page content or browsing history. Terminal input and output stay between the extension and SideTerm Bridge on your Mac. Programs you run inside the terminal retain their own network and privacy behavior.
+SideTerm does not inject scripts into websites and does not request permission to read page content or browsing history. Terminal input and output stay between the extension and SideTerm Bridge on your computer. Programs you run inside the terminal retain their own network and privacy behavior.
 
 ## Troubleshooting
 
@@ -50,7 +52,7 @@ SideTerm does not inject scripts into websites and does not request permission t
 
 ## Development
 
-Requirements: macOS, Node.js 20.19 or newer, npm, and Xcode Command Line Tools.
+Requirements: macOS or Linux, Node.js 20.19 or newer, npm, and the platform's native build tools.
 
 ```bash
 git clone https://github.com/ryanonmars/sideterm.git
@@ -66,6 +68,8 @@ npm test          # Run the test suite
 npm run typecheck # Check TypeScript
 npm run build     # Build the extension and native helper
 ```
+
+Linux `.deb` and `.rpm` packages are built on Linux with `npm run package:linux`. The GitHub release workflow builds and attaches both formats automatically.
 
 ## Support
 

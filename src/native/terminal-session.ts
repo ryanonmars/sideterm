@@ -66,7 +66,9 @@ export class TerminalSession {
     this.spawn = options.spawn ?? (nodePty.spawn as PtyFactory)
     this.shell =
       options.shell ??
-      (platform === 'win32' ? process.env.COMSPEC || 'powershell.exe' : process.env.SHELL || '/bin/zsh')
+      (platform === 'win32'
+        ? process.env.COMSPEC || 'powershell.exe'
+        : process.env.SHELL || (platform === 'linux' ? '/bin/bash' : '/bin/zsh'))
     this.args = platform === 'win32' ? [] : ['-l']
     this.cwd = options.cwd ?? os.homedir()
     this.env = options.env ?? stringEnvironment(process.env)

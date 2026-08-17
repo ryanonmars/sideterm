@@ -6,6 +6,11 @@ import {
   type BridgeHelloMessage,
   type HostToPanelMessage
 } from '../shared/native-messages'
+import {
+  bridgeDownloadFor,
+  detectBridgePlatform,
+  normalizeBridgePlatform
+} from './bridge-download'
 import { classifyBridgeError } from './bridge-status'
 import { isBridgeUpdateAvailable, RECOMMENDED_BRIDGE_VERSION } from './bridge-version'
 import { TerminalConnection } from './terminal-connection'
@@ -39,6 +44,7 @@ const bridgeOnboarding = document.querySelector<HTMLElement>('#bridge-onboarding
 const installBridgeLink = document.querySelector<HTMLAnchorElement>('#install-bridge')!
 const checkBridgeButton = document.querySelector<HTMLButtonElement>('#check-bridge')!
 const bridgeDetail = document.querySelector<HTMLElement>('#bridge-detail')!
+const onboardingDescription = document.querySelector<HTMLElement>('#onboarding-description')!
 const settingsDialog = document.querySelector<HTMLDialogElement>('#settings-dialog')!
 const openSettingsButton = document.querySelector<HTMLButtonElement>('#open-settings')!
 const closeSettingsButton = document.querySelector<HTMLButtonElement>('#close-settings')!
@@ -52,6 +58,7 @@ const settingsProtocolVersion = document.querySelector<HTMLElement>('#settings-p
 const settingsSsh = document.querySelector<HTMLElement>('#settings-ssh')!
 const bridgeUpdateBanner = document.querySelector<HTMLElement>('#bridge-update-banner')!
 const bridgeUpdateMessage = document.querySelector<HTMLElement>('#bridge-update-message')!
+const bridgeUpdateLink = document.querySelector<HTMLAnchorElement>('#bridge-update-link')!
 const checkBridgeUpdateButton = document.querySelector<HTMLButtonElement>('#check-bridge-update')!
 const dismissBridgeUpdateButton = document.querySelector<HTMLButtonElement>('#dismiss-bridge-update')!
 
@@ -65,6 +72,14 @@ let bridgeUpdateDismissed = false
 let settingsCheckPending = false
 let settingsCheckTimer: number | undefined
 let settingsUpdateTimer: number | undefined
+
+function configureBridgeDownload(platform = detectBridgePlatform()): void {
+  const download = bridgeDownloadFor(platform)
+  installBridgeLink.href = download.url
+  installBridgeLink.textContent = download.installLabel
+  bridgeUpdateLink.href = download.url
+  onboardingDescription.textContent = download.description
+}
 
 function resetSettingsUpdateFeedback(): void {
   settingsCheckUpdateButton.textContent = 'Check for updates'
@@ -459,6 +474,7 @@ function closeTerminal(id: string): void {
 function handleHostMessage(message: HostToPanelMessage): void {
   if (message.type === 'hello') {
     bridgeInfo = message
+    configureBridgeDownload(normalizeBridgePlatform(message.platform))
     if (!isBridgeUpdateAvailable(message.bridgeVersion, RECOMMENDED_BRIDGE_VERSION)) {
       bridgeUpdateDismissed = false
     }
@@ -580,6 +596,7 @@ settingsCheckUpdateButton.addEventListener('click', checkForBridgeUpdate)
 window.addEventListener('pagehide', () => connection.disconnect())
 new ResizeObserver(scheduleFit).observe(workspaceElement)
 
+configureBridgeDownload()
 connection.connect()
 const savedWorkspace = loadWorkspace()
 if (savedWorkspace?.tabs.length) {

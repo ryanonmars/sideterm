@@ -11,6 +11,8 @@
     "build": "vite build && node scripts/build-native.mjs",
     "build:extension": "vite build",
     "package:extension": "npm run build:extension && node scripts/package-extension.mjs",
+    "package:linux": "npm run build:native && node scripts/package-linux.mjs",
+    "package:linux:stage": "npm run build:native && node scripts/package-linux.mjs --stage-only",
     "build:native": "node scripts/build-native.mjs",
     "package:macos": "npm run build:native && node scripts/package-macos.mjs",
     "package:macos:stage": "npm run build:native && node scripts/package-macos.mjs --stage-only",
