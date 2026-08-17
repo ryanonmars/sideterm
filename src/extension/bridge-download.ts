@@ -84,7 +84,7 @@ export function bridgeDownloadFor(
       installLabel: 'Download Linux .deb',
       alternateUrl: linuxBridgeUrl(architecture, 'rpm'),
       alternateLabel: 'Need an .rpm instead?',
-      updateUrl: BRIDGE_RELEASES_URL,
+      updateUrl: linuxBridgeUrl(architecture, 'deb'),
       description:
         'For Linux Mint, Ubuntu, and Debian, download the .deb package. Use the .rpm option for Fedora and related systems.',
       notice:

@@ -1,4 +1,4 @@
-export const RECOMMENDED_BRIDGE_VERSION = '0.1.2'
+export const RECOMMENDED_BRIDGE_VERSION = '0.1.3'
 
 function versionParts(value: string): number[] | null {
   const match = /^v?(\d+)\.(\d+)\.(\d+)$/.exec(value.trim())
