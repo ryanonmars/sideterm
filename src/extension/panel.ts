@@ -42,6 +42,7 @@ const reconnectButton = document.querySelector<HTMLButtonElement>('#reconnect-bu
 const toolbarElement = document.querySelector<HTMLElement>('.terminal-toolbar')!
 const bridgeOnboarding = document.querySelector<HTMLElement>('#bridge-onboarding')!
 const installBridgeLink = document.querySelector<HTMLAnchorElement>('#install-bridge')!
+const installBridgeAlternateLink = document.querySelector<HTMLAnchorElement>('#install-bridge-alternate')!
 const checkBridgeButton = document.querySelector<HTMLButtonElement>('#check-bridge')!
 const bridgeDetail = document.querySelector<HTMLElement>('#bridge-detail')!
 const onboardingDescription = document.querySelector<HTMLElement>('#onboarding-description')!
@@ -77,7 +78,12 @@ function configureBridgeDownload(platform = detectBridgePlatform()): void {
   const download = bridgeDownloadFor(platform)
   installBridgeLink.href = download.url
   installBridgeLink.textContent = download.installLabel
-  bridgeUpdateLink.href = download.url
+  installBridgeAlternateLink.hidden = !download.alternateUrl
+  if (download.alternateUrl && download.alternateLabel) {
+    installBridgeAlternateLink.href = download.alternateUrl
+    installBridgeAlternateLink.textContent = download.alternateLabel
+  }
+  bridgeUpdateLink.href = download.updateUrl ?? download.url
   onboardingDescription.textContent = download.description
 }
 

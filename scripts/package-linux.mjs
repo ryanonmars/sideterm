@@ -175,6 +175,8 @@ export async function packageLinux({ stageOnly = false } = {}) {
   const debName = `SideTermBridge-${version}-linux-${architecture.asset}.deb`
   const debPath = join(releaseRoot, debName)
   run('dpkg-deb', ['--build', '--root-owner-group', debRoot, debPath])
+  const stableDebPath = join(releaseRoot, `SideTermBridge-linux-${architecture.asset}.deb`)
+  await copyFile(debPath, stableDebPath)
 
   const rpmRoot = join(workRoot, 'rpm')
   for (const directory of ['BUILD', 'BUILDROOT', 'RPMS', 'SOURCES', 'SPECS', 'SRPMS']) {
@@ -197,6 +199,8 @@ export async function packageLinux({ stageOnly = false } = {}) {
   )
   const rpmPath = join(releaseRoot, rpmName)
   await copyFile(builtRpm, rpmPath)
+  const stableRpmPath = join(releaseRoot, `SideTermBridge-linux-${architecture.asset}.rpm`)
+  await copyFile(rpmPath, stableRpmPath)
 
   const checksumPath = join(
     releaseRoot,
@@ -211,7 +215,7 @@ export async function packageLinux({ stageOnly = false } = {}) {
   console.log(`Created ${debPath}`)
   console.log(`Created ${rpmPath}`)
   console.log(`Created ${checksumPath}`)
-  return { payloadRoot, debPath, rpmPath, checksumPath }
+  return { payloadRoot, debPath, rpmPath, stableDebPath, stableRpmPath, checksumPath }
 }
 
 const invokedPath = process.argv[1] ? resolve(process.argv[1]) : ''

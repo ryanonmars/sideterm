@@ -4,6 +4,7 @@ import {
   BRIDGE_RELEASES_URL,
   MACOS_BRIDGE_URL,
   bridgeDownloadFor,
+  detectBridgeArchitecture,
   detectBridgePlatform,
   normalizeBridgePlatform
 } from '../src/extension/bridge-download'
@@ -23,11 +24,18 @@ describe('Bridge downloads', () => {
     expect(normalizeBridgePlatform('Windows')).toBe('unsupported')
   })
 
-  it('uses the macOS package and Linux release chooser', () => {
+  it('detects common Linux architectures', () => {
+    expect(detectBridgeArchitecture('Mozilla/5.0 (X11; Linux x86_64)')).toBe('x64')
+    expect(detectBridgeArchitecture('Mozilla/5.0 (X11; Linux aarch64)')).toBe('arm64')
+    expect(detectBridgeArchitecture('Mozilla/5.0')).toBe('unknown')
+  })
+
+  it('uses the macOS package and direct Linux packages', () => {
     expect(bridgeDownloadFor('macos').url).toBe(MACOS_BRIDGE_URL)
-    expect(bridgeDownloadFor('linux')).toMatchObject({
-      url: BRIDGE_RELEASES_URL,
-      installLabel: 'Choose Linux installer'
+    expect(bridgeDownloadFor('linux', 'x64')).toMatchObject({
+      url: `${BRIDGE_RELEASES_URL}/download/SideTermBridge-linux-x64.deb`,
+      alternateUrl: `${BRIDGE_RELEASES_URL}/download/SideTermBridge-linux-x64.rpm`,
+      installLabel: 'Download Linux .deb'
     })
   })
 })
