@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "SideTerm",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A real terminal beside your browser tabs.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxDJ/Rhukr7GeKnlQ28cfc3N+oqUl9Wzg60MRgRSdsxOhpnoWJVrre75s/aWXBnbdOWsOZgGi63QY8HmhFDjRqtxKMoTpEDLKeHPH2H3WJ3mbMhK1/LnRfOX135yBil6V29C+gymXCtENYSXqRvm0BfD7Rcr2nXAto/Vn39+6Jvjz57oKM0+OHNKarmCl7bksKFqEbiyZBvYV5dnC5tMQPFfIxeryumHV2Sc9MD+TbZhev5kB2n3W6urI5IJQQotssr8SgJy1p0yOKX5Yww+nvcIbQ1AXdwrRrgg7gITAaCIKI/eqDKcHU4o/3ugx5uRsnkhA0CXCIRXrJqwB4h69HQIDAQAB",
   "permissions": ["sidePanel", "nativeMessaging"],

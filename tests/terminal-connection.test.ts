@@ -94,6 +94,7 @@ describe('TerminalConnection', () => {
     connection.resize('terminal-1', 120, 40)
     connection.restartSession('terminal-1')
     connection.closeSession('terminal-1')
+    connection.restartBridge()
 
     expect(port.messages).toEqual([
       hello,
@@ -101,7 +102,8 @@ describe('TerminalConnection', () => {
       { type: 'input', sessionId: 'terminal-1', data: 'ssh production\r' },
       { type: 'resize', sessionId: 'terminal-1', cols: 120, rows: 40 },
       { type: 'restart', sessionId: 'terminal-1' },
-      { type: 'close', sessionId: 'terminal-1' }
+      { type: 'close', sessionId: 'terminal-1' },
+      { type: 'reconnect-native' }
     ])
   })
 

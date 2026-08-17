@@ -32,6 +32,10 @@ body.bridge-setup {
   grid-template-rows: 44px minmax(0, 1fr);
 }
 
+body.bridge-update-visible {
+  grid-template-rows: 44px 35px 34px minmax(0, 1fr);
+}
+
 button {
   font: inherit;
 }
@@ -339,6 +343,82 @@ button {
   overflow: hidden;
   background: #080a0d;
   transition: grid-template-columns 150ms ease, grid-template-rows 150ms ease;
+}
+
+.bridge-update-visible .terminal-workspace {
+  grid-row: 4;
+}
+
+.bridge-update-banner {
+  grid-row: 3;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 0 7px 0 11px;
+  border-bottom: 1px solid #304b70;
+  background: #13243a;
+  color: #cfe0fa;
+  font-size: 11px;
+  animation: bridge-update-enter 160ms ease-out;
+}
+
+.bridge-update-banner[hidden] {
+  display: none;
+}
+
+#bridge-update-message {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bridge-update-actions {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.bridge-update-link,
+.bridge-update-check,
+.bridge-update-dismiss {
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: #aecdff;
+  font: inherit;
+  font-weight: 650;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.bridge-update-link,
+.bridge-update-check {
+  padding: 5px 6px;
+}
+
+.bridge-update-dismiss {
+  width: 23px;
+  height: 23px;
+  padding: 0;
+  color: #8fa5c2;
+  font-size: 18px;
+}
+
+.bridge-update-link:hover,
+.bridge-update-check:hover,
+.bridge-update-dismiss:hover {
+  background: #234064;
+  color: white;
+}
+
+@keyframes bridge-update-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
 }
 
 .bridge-onboarding {

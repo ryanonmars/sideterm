@@ -31,6 +31,20 @@
       </div>
     </nav>
 
+    <aside id="bridge-update-banner" class="bridge-update-banner" role="status" hidden>
+      <span id="bridge-update-message">A SideTerm Bridge update is available.</span>
+      <div class="bridge-update-actions">
+        <a
+          class="bridge-update-link"
+          href="https://github.com/ryanonmars/sideterm/releases/latest/download/SideTermBridge.pkg"
+          target="_blank"
+          rel="noreferrer"
+        >Update</a>
+        <button id="check-bridge-update" class="bridge-update-check" type="button">Check again</button>
+        <button id="dismiss-bridge-update" class="bridge-update-dismiss" type="button" aria-label="Dismiss Bridge update">×</button>
+      </div>
+    </aside>
+
     <section id="bridge-onboarding" class="bridge-onboarding" aria-labelledby="bridge-title" hidden>
       <img class="onboarding-logo" src="/icons/sideterm.png" alt="" />
       <div class="onboarding-copy">

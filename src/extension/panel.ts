@@ -3,6 +3,7 @@ import { Terminal } from '@xterm/xterm'
 
 import type { BridgeHelloMessage, HostToPanelMessage } from '../shared/native-messages'
 import { classifyBridgeError } from './bridge-status'
+import { isBridgeUpdateAvailable, RECOMMENDED_BRIDGE_VERSION } from './bridge-version'
 import { TerminalConnection } from './terminal-connection'
 import { TerminalWorkspaceState, type TerminalTab } from './workspace-state'
 import { loadWorkspace, saveWorkspace } from './workspace-storage'
@@ -44,6 +45,10 @@ const settingsShell = document.querySelector<HTMLElement>('#settings-shell')!
 const settingsBridgeVersion = document.querySelector<HTMLElement>('#settings-bridge-version')!
 const settingsProtocolVersion = document.querySelector<HTMLElement>('#settings-protocol-version')!
 const settingsSsh = document.querySelector<HTMLElement>('#settings-ssh')!
+const bridgeUpdateBanner = document.querySelector<HTMLElement>('#bridge-update-banner')!
+const bridgeUpdateMessage = document.querySelector<HTMLElement>('#bridge-update-message')!
+const checkBridgeUpdateButton = document.querySelector<HTMLButtonElement>('#check-bridge-update')!
+const dismissBridgeUpdateButton = document.querySelector<HTMLButtonElement>('#dismiss-bridge-update')!
 
 const state = new TerminalWorkspaceState()
 const views = new Map<string, TerminalView>()
@@ -51,6 +56,25 @@ let nextSessionNumber = 1
 let focusedId: string | null = null
 let layoutFrame = 0
 let bridgeInfo: BridgeHelloMessage | null = null
+let bridgeUpdateDismissed = false
+
+function hideBridgeUpdate(): void {
+  bridgeUpdateBanner.hidden = true
+  document.body.classList.remove('bridge-update-visible')
+}
+
+function renderBridgeUpdate(): void {
+  const updateAvailable =
+    bridgeInfo && isBridgeUpdateAvailable(bridgeInfo.bridgeVersion, RECOMMENDED_BRIDGE_VERSION)
+  if (!updateAvailable || bridgeUpdateDismissed || !bridgeOnboarding.hidden) {
+    hideBridgeUpdate()
+    return
+  }
+
+  bridgeUpdateMessage.textContent = `SideTerm Bridge ${RECOMMENDED_BRIDGE_VERSION} is available.`
+  bridgeUpdateBanner.hidden = false
+  document.body.classList.add('bridge-update-visible')
+}
 
 function renderBridgeSettings(status = bridgeInfo ? 'Connected' : 'Not connected'): void {
   settingsStatus.textContent = status
@@ -127,6 +151,7 @@ function showReconnect(status: string): void {
 }
 
 function showBridgeOnboarding(detail: string, updateRequired = false): void {
+  hideBridgeUpdate()
   document.body.classList.add('bridge-setup')
   toolbarElement.hidden = true
   workspaceElement.hidden = true
@@ -143,6 +168,7 @@ function showTerminalWorkspace(): void {
   toolbarElement.hidden = false
   workspaceElement.hidden = false
   bridgeDetail.textContent = ''
+  renderBridgeUpdate()
 }
 
 function scheduleFit(): void {
@@ -378,6 +404,9 @@ function closeTerminal(id: string): void {
 function handleHostMessage(message: HostToPanelMessage): void {
   if (message.type === 'hello') {
     bridgeInfo = message
+    if (!isBridgeUpdateAvailable(message.bridgeVersion, RECOMMENDED_BRIDGE_VERSION)) {
+      bridgeUpdateDismissed = false
+    }
     renderBridgeSettings()
     showTerminalWorkspace()
     scheduleFit()
@@ -449,6 +478,7 @@ const connection = new TerminalConnection({
 function reconnectBridge(): void {
   if (!bridgeOnboarding.hidden) bridgeDetail.textContent = 'Checking for SideTerm Bridge…'
   connection.connect()
+  connection.restartBridge()
   for (const tab of state.tabs) connection.createSession(tab.id)
 }
 
@@ -465,6 +495,11 @@ rowsButton.addEventListener('click', () => {
 })
 reconnectButton.addEventListener('click', reconnectBridge)
 checkBridgeButton.addEventListener('click', reconnectBridge)
+checkBridgeUpdateButton.addEventListener('click', reconnectBridge)
+dismissBridgeUpdateButton.addEventListener('click', () => {
+  bridgeUpdateDismissed = true
+  hideBridgeUpdate()
+})
 openSettingsButton.addEventListener('click', () => {
   renderBridgeSettings()
   settingsDialog.showModal()

@@ -8,6 +8,18 @@ const outputBuffers = new Map<string, string>()
 let nativePort: chrome.runtime.Port | null = null
 let bridgeHello: BridgeHelloMessage | null = null
 
+function isReconnectNativeMessage(value: unknown): boolean {
+  return typeof value === 'object' && value !== null && (value as { type?: unknown }).type === 'reconnect-native'
+}
+
+function restartNative(): void {
+  const previousPort = nativePort
+  nativePort = null
+  bridgeHello = null
+  previousPort?.disconnect()
+  connectNative()
+}
+
 void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch((error) => {
   console.error('Unable to configure SideTerm side panel:', error)
 })
@@ -50,6 +62,10 @@ chrome.runtime.onConnect.addListener((panel) => {
   if (bridgeHello) panel.postMessage(bridgeHello)
 
   panel.onMessage.addListener((value: unknown) => {
+    if (isReconnectNativeMessage(value)) {
+      restartNative()
+      return
+    }
     const message = parsePanelMessage(value)
     if (!message) {
       panel.postMessage({ type: 'error', message: 'Invalid terminal message' })
