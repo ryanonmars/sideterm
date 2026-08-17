@@ -35,7 +35,8 @@ describe('Bridge downloads', () => {
     expect(bridgeDownloadFor('linux', 'x64')).toMatchObject({
       url: `${BRIDGE_RELEASES_URL}/download/SideTermBridge-linux-x64.deb`,
       alternateUrl: `${BRIDGE_RELEASES_URL}/download/SideTermBridge-linux-x64.rpm`,
-      installLabel: 'Download Linux .deb'
+      installLabel: 'Download Linux .deb',
+      notice: expect.stringContaining('Flatpak')
     })
   })
 })

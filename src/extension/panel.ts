@@ -43,6 +43,7 @@ const toolbarElement = document.querySelector<HTMLElement>('.terminal-toolbar')!
 const bridgeOnboarding = document.querySelector<HTMLElement>('#bridge-onboarding')!
 const installBridgeLink = document.querySelector<HTMLAnchorElement>('#install-bridge')!
 const installBridgeAlternateLink = document.querySelector<HTMLAnchorElement>('#install-bridge-alternate')!
+const onboardingNotice = document.querySelector<HTMLElement>('#onboarding-notice')!
 const checkBridgeButton = document.querySelector<HTMLButtonElement>('#check-bridge')!
 const bridgeDetail = document.querySelector<HTMLElement>('#bridge-detail')!
 const onboardingDescription = document.querySelector<HTMLElement>('#onboarding-description')!
@@ -85,6 +86,8 @@ function configureBridgeDownload(platform = detectBridgePlatform()): void {
   }
   bridgeUpdateLink.href = download.updateUrl ?? download.url
   onboardingDescription.textContent = download.description
+  onboardingNotice.hidden = !download.notice
+  onboardingNotice.textContent = download.notice ?? ''
 }
 
 function resetSettingsUpdateFeedback(): void {

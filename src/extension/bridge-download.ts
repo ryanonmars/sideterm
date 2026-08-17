@@ -21,6 +21,7 @@ export interface BridgeDownload {
   url: string
   installLabel: string
   description: string
+  notice?: string
   alternateUrl?: string
   alternateLabel?: string
   updateUrl?: string
@@ -85,7 +86,9 @@ export function bridgeDownloadFor(
       alternateLabel: 'Need an .rpm instead?',
       updateUrl: BRIDGE_RELEASES_URL,
       description:
-        'For Linux Mint, Ubuntu, and Debian, download the .deb package. Use the .rpm option for Fedora and related systems.'
+        'For Linux Mint, Ubuntu, and Debian, download the .deb package. Use the .rpm option for Fedora and related systems.',
+      notice:
+        'Linux browser requirement: use Brave or Chrome installed from its .deb package. Flatpak versions cannot connect to local terminal apps, including SideTerm Bridge.'
     }
   }
 

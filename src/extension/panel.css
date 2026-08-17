@@ -591,6 +591,18 @@ button {
   line-height: 1.55;
 }
 
+.onboarding-notice {
+  max-width: 390px;
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border: 1px solid #6f5324;
+  border-radius: 7px;
+  background: #211a0e;
+  color: #e2c792;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .onboarding-actions {
   display: flex;
   flex-wrap: wrap;

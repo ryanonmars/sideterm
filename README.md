@@ -30,6 +30,10 @@ SideTerm supports macOS and 64-bit Linux. [SideTerm Bridge](https://developer.ch
 
 On Debian, Ubuntu, and related distributions, install the downloaded package with `sudo apt install ./SideTermBridge-*.deb`. On Fedora and related distributions, use `sudo dnf install ./SideTermBridge-*.rpm`.
 
+### Linux browser requirement
+
+On Linux, use Chrome or Brave installed from its normal `.deb` package. Flatpak versions of Chrome-based browsers are sandboxed and cannot connect browser extensions to local terminal applications, so they do not support SideTerm Bridge.
+
 ## Using SideTerm
 
 - Click **+** to open another terminal.
@@ -47,6 +51,7 @@ SideTerm does not inject scripts into websites and does not request permission t
 ## Troubleshooting
 
 - **SideTerm Bridge not found:** install or reinstall SideTerm Bridge, then click **Reconnect**.
+- **Using Flatpak Brave or Chrome on Linux:** install the browser's normal `.deb` package instead; Flatpak browser sandboxes cannot run SideTerm Bridge.
 - **Disconnected:** click **Reconnect**. If it disconnects again, reinstall SideTerm Bridge.
 - **Shell exited:** click the restart icon on that terminal tab, or close it and create another terminal.
 
