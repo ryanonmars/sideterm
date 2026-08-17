@@ -529,14 +529,25 @@ button {
 }
 
 .settings-update-link {
+  padding: 5px 0;
+  border: 0;
+  background: transparent;
   color: #a9c8ff;
+  font: inherit;
   font-size: 11px;
   text-decoration: none;
+  cursor: pointer;
 }
 
 .settings-update-link:hover {
   color: #d6e5ff;
   text-decoration: underline;
+}
+
+.settings-update-link:disabled {
+  color: #8de6a8;
+  cursor: default;
+  text-decoration: none;
 }
 
 .onboarding-logo {
@@ -614,6 +625,16 @@ button {
 .secondary-button:hover {
   border-color: #46576c;
   color: white;
+}
+
+.secondary-button:disabled {
+  cursor: default;
+  opacity: 0.72;
+}
+
+.secondary-button.check-success {
+  border-color: #315d42;
+  color: #8de6a8;
 }
 
 .bridge-detail {

@@ -16,6 +16,7 @@ function restartNative(): void {
   const previousPort = nativePort
   nativePort = null
   bridgeHello = null
+  outputBuffers.clear()
   previousPort?.disconnect()
   connectNative()
 }

@@ -22,6 +22,7 @@ export interface TerminalBackend {
   write(sessionId: string, data: string): void
   resize(sessionId: string, cols: number, rows: number): void
   restartSession(sessionId: string): void
+  checkBridge(): void
   restartBridge(): void
 }
 
@@ -97,6 +98,11 @@ export class TerminalConnection implements TerminalBackend {
 
   restartSession(sessionId: string): void {
     this.send({ type: 'restart', sessionId })
+  }
+
+  checkBridge(): void {
+    if (!this.port) this.connect()
+    else this.port.postMessage({ type: 'hello', protocolVersion: SIDETERM_PROTOCOL_VERSION })
   }
 
   restartBridge(): void {

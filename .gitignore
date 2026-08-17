@@ -5,3 +5,4 @@ out/
 dist/
 release/
 .DS_Store
+*.af~lock~

@@ -39,6 +39,7 @@ const settingsDialog = document.querySelector<HTMLDialogElement>('#settings-dial
 const openSettingsButton = document.querySelector<HTMLButtonElement>('#open-settings')!
 const closeSettingsButton = document.querySelector<HTMLButtonElement>('#close-settings')!
 const settingsReconnectButton = document.querySelector<HTMLButtonElement>('#settings-reconnect')!
+const settingsCheckUpdateButton = document.querySelector<HTMLButtonElement>('#settings-check-update')!
 const settingsStatus = document.querySelector<HTMLElement>('#settings-status')!
 const settingsPlatform = document.querySelector<HTMLElement>('#settings-platform')!
 const settingsShell = document.querySelector<HTMLElement>('#settings-shell')!
@@ -57,6 +58,53 @@ let focusedId: string | null = null
 let layoutFrame = 0
 let bridgeInfo: BridgeHelloMessage | null = null
 let bridgeUpdateDismissed = false
+let settingsCheckPending = false
+let settingsCheckTimer: number | undefined
+let settingsUpdateTimer: number | undefined
+
+function resetSettingsUpdateFeedback(): void {
+  settingsCheckUpdateButton.textContent = 'Check for updates'
+  settingsCheckUpdateButton.disabled = false
+}
+
+function checkForBridgeUpdate(): void {
+  if (bridgeInfo && isBridgeUpdateAvailable(bridgeInfo.bridgeVersion, RECOMMENDED_BRIDGE_VERSION)) {
+    bridgeUpdateDismissed = false
+    settingsDialog.close()
+    renderBridgeUpdate()
+    return
+  }
+
+  if (settingsUpdateTimer !== undefined) window.clearTimeout(settingsUpdateTimer)
+  settingsCheckUpdateButton.textContent = bridgeInfo ? 'Up to date ✓' : 'Connect Bridge first'
+  settingsCheckUpdateButton.disabled = true
+  settingsUpdateTimer = window.setTimeout(resetSettingsUpdateFeedback, 1_800)
+}
+
+function setSettingsCheckFeedback(label: string, disabled = false, success = false): void {
+  settingsReconnectButton.textContent = label
+  settingsReconnectButton.disabled = disabled
+  settingsReconnectButton.classList.toggle('check-success', success)
+}
+
+function finishSettingsCheck(success: boolean): void {
+  if (!settingsCheckPending) return
+  settingsCheckPending = false
+  if (settingsCheckTimer !== undefined) window.clearTimeout(settingsCheckTimer)
+  setSettingsCheckFeedback(success ? 'Connected ✓' : 'Try again', false, success)
+  if (success) {
+    settingsCheckTimer = window.setTimeout(() => {
+      setSettingsCheckFeedback('Check connection')
+    }, 1_600)
+  }
+}
+
+function beginSettingsCheck(): void {
+  settingsCheckPending = true
+  if (settingsCheckTimer !== undefined) window.clearTimeout(settingsCheckTimer)
+  setSettingsCheckFeedback('Checking…', true)
+  settingsCheckTimer = window.setTimeout(() => finishSettingsCheck(false), 5_000)
+}
 
 function hideBridgeUpdate(): void {
   bridgeUpdateBanner.hidden = true
@@ -408,17 +456,20 @@ function handleHostMessage(message: HostToPanelMessage): void {
       bridgeUpdateDismissed = false
     }
     renderBridgeSettings()
+    finishSettingsCheck(true)
     showTerminalWorkspace()
     scheduleFit()
     return
   }
   if (message.type === 'incompatible') {
+    finishSettingsCheck(false)
     bridgeInfo = null
     renderBridgeSettings('Update required')
     showBridgeOnboarding('Your installed Bridge is not compatible with this version of SideTerm.', true)
     return
   }
   if (message.type === 'error' && !message.sessionId) {
+    finishSettingsCheck(false)
     bridgeInfo = null
     renderBridgeSettings('Not connected')
     if (classifyBridgeError(message.message) === 'missing') {
@@ -461,12 +512,14 @@ const connection = new TerminalConnection({
       reconnectButton.hidden = true
       scheduleFit()
     } else if (reconnectButton.hidden) {
+      finishSettingsCheck(false)
       bridgeInfo = null
       renderBridgeSettings('Not connected')
       showReconnect('Disconnected')
     }
   },
   onError: (message) => {
+    finishSettingsCheck(false)
     if (classifyBridgeError(message) === 'missing') {
       showBridgeOnboarding('SideTerm Bridge is not installed or could not be found.')
     } else {
@@ -475,11 +528,21 @@ const connection = new TerminalConnection({
   }
 })
 
-function reconnectBridge(): void {
+function restartBridgeAndSessions(): void {
   if (!bridgeOnboarding.hidden) bridgeDetail.textContent = 'Checking for SideTerm Bridge…'
+  for (const view of views.values()) {
+    view.terminal.reset()
+    view.exited = false
+  }
   connection.connect()
   connection.restartBridge()
   for (const tab of state.tabs) connection.createSession(tab.id)
+}
+
+function checkBridgeConnection(): void {
+  renderBridgeSettings('Checking…')
+  beginSettingsCheck()
+  connection.checkBridge()
 }
 
 addButton.addEventListener('click', addTerminal)
@@ -493,9 +556,9 @@ rowsButton.addEventListener('click', () => {
   persistWorkspace()
   renderWorkspace()
 })
-reconnectButton.addEventListener('click', reconnectBridge)
-checkBridgeButton.addEventListener('click', reconnectBridge)
-checkBridgeUpdateButton.addEventListener('click', reconnectBridge)
+reconnectButton.addEventListener('click', restartBridgeAndSessions)
+checkBridgeButton.addEventListener('click', restartBridgeAndSessions)
+checkBridgeUpdateButton.addEventListener('click', restartBridgeAndSessions)
 dismissBridgeUpdateButton.addEventListener('click', () => {
   bridgeUpdateDismissed = true
   hideBridgeUpdate()
@@ -505,7 +568,8 @@ openSettingsButton.addEventListener('click', () => {
   settingsDialog.showModal()
 })
 closeSettingsButton.addEventListener('click', () => settingsDialog.close())
-settingsReconnectButton.addEventListener('click', reconnectBridge)
+settingsReconnectButton.addEventListener('click', checkBridgeConnection)
+settingsCheckUpdateButton.addEventListener('click', checkForBridgeUpdate)
 window.addEventListener('pagehide', () => connection.disconnect())
 new ResizeObserver(scheduleFit).observe(workspaceElement)
 

@@ -94,6 +94,7 @@ describe('TerminalConnection', () => {
     connection.resize('terminal-1', 120, 40)
     connection.restartSession('terminal-1')
     connection.closeSession('terminal-1')
+    connection.checkBridge()
     connection.restartBridge()
 
     expect(port.messages).toEqual([
@@ -103,6 +104,7 @@ describe('TerminalConnection', () => {
       { type: 'resize', sessionId: 'terminal-1', cols: 120, rows: 40 },
       { type: 'restart', sessionId: 'terminal-1' },
       { type: 'close', sessionId: 'terminal-1' },
+      hello,
       { type: 'reconnect-native' }
     ])
   })
