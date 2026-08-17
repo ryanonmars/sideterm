@@ -8,7 +8,17 @@ import {
   type PtyFactory,
   type PtyProcess
 } from '../src/native/terminal-session'
-import type { HostToPanelMessage } from '../src/shared/native-messages'
+import type { BridgeHelloMessage, HostToPanelMessage } from '../src/shared/native-messages'
+
+const bridgeHello: BridgeHelloMessage = {
+  type: 'hello',
+  bridgeVersion: '1.2.3',
+  protocolVersion: 1,
+  platform: 'macOS',
+  activeShell: '/bin/zsh',
+  availableShells: ['/bin/zsh', '/bin/bash'],
+  capabilities: { pty: true, localShell: true, systemSsh: true }
+}
 
 class FakePtyProcess implements PtyProcess {
   private dataListener: ((data: string) => void) | null = null
@@ -62,6 +72,20 @@ describe('TerminalSession', () => {
       cwd: os.homedir(),
       env: { PATH: '/usr/bin' }
     })
+  })
+
+  it('passes the existing SSH and home environment into the login shell', () => {
+    const spawn = vi.fn<PtyFactory>(() => new FakePtyProcess())
+    const env = {
+      HOME: '/Users/test',
+      PATH: '/usr/bin:/bin',
+      SSH_AUTH_SOCK: '/private/tmp/ssh-agent.sock'
+    }
+    const session = new TerminalSession({ spawn, env, shell: '/bin/zsh', cwd: '/Users/test' })
+
+    session.start({ onData: () => undefined, onExit: () => undefined })
+
+    expect(spawn).toHaveBeenCalledWith('/bin/zsh', ['-l'], expect.objectContaining({ env }))
   })
 
   it('forwards data, input, exit, and safe terminal sizes', () => {
@@ -133,6 +157,54 @@ class FakeTerminal implements TerminalController {
 }
 
 describe('NativeHost', () => {
+  it('announces Bridge status and rejects incompatible protocol versions', () => {
+    const sent: HostToPanelMessage[] = []
+    const createTerminal = vi.fn(() => new FakeTerminal())
+    const host = new NativeHost({
+      createTerminal,
+      send: (message) => sent.push(message),
+      bridgeHello
+    })
+
+    host.announce()
+    host.accept({ type: 'hello', protocolVersion: 1 })
+    host.accept({ type: 'hello', protocolVersion: 2 })
+    host.accept({ type: 'create', sessionId: 'blocked-terminal' })
+
+    expect(sent).toEqual([
+      bridgeHello,
+      bridgeHello,
+      {
+        type: 'incompatible',
+        expectedProtocolVersion: 1,
+        receivedProtocolVersion: 2,
+        message: 'Unsupported SideTerm protocol version 2'
+      },
+      {
+        type: 'incompatible',
+        expectedProtocolVersion: 1,
+        receivedProtocolVersion: 2,
+        message: 'Update SideTerm or SideTerm Bridge before opening a terminal'
+      }
+    ])
+    expect(createTerminal).not.toHaveBeenCalled()
+  })
+
+  it('accepts sessions again after a compatible handshake', () => {
+    const createTerminal = vi.fn(() => new FakeTerminal())
+    const host = new NativeHost({
+      createTerminal,
+      send: () => undefined,
+      bridgeHello
+    })
+
+    host.accept({ type: 'hello', protocolVersion: 2 })
+    host.accept({ type: 'hello', protocolVersion: 1 })
+    host.accept({ type: 'create', sessionId: 'terminal-1' })
+
+    expect(createTerminal).toHaveBeenCalledOnce()
+  })
+
   it('creates and independently controls terminal sessions', () => {
     const terminals: FakeTerminal[] = []
     const sent: HostToPanelMessage[] = []
@@ -142,7 +214,8 @@ describe('NativeHost', () => {
         terminals.push(terminal)
         return terminal
       },
-      send: (message) => sent.push(message)
+      send: (message) => sent.push(message),
+      bridgeHello
     })
 
     host.accept({ type: 'create', sessionId: 'terminal-1' })
@@ -164,7 +237,11 @@ describe('NativeHost', () => {
   it('forwards output and exit status to the panel', () => {
     const terminal = new FakeTerminal()
     const sent: HostToPanelMessage[] = []
-    const host = new NativeHost({ createTerminal: () => terminal, send: (message) => sent.push(message) })
+    const host = new NativeHost({
+      createTerminal: () => terminal,
+      send: (message) => sent.push(message),
+      bridgeHello
+    })
 
     host.accept({ type: 'create', sessionId: 'terminal-4' })
     terminal.callbacks?.onData('hello\r\n')
@@ -185,7 +262,8 @@ describe('NativeHost', () => {
         terminals.push(terminal)
         return terminal
       },
-      send: () => undefined
+      send: () => undefined,
+      bridgeHello
     })
 
     host.accept({ type: 'create', sessionId: 'terminal-1' })
@@ -199,7 +277,11 @@ describe('NativeHost', () => {
   it('rejects invalid or unknown sessions and disposes every terminal', () => {
     const terminal = new FakeTerminal()
     const sent: HostToPanelMessage[] = []
-    const host = new NativeHost({ createTerminal: () => terminal, send: (message) => sent.push(message) })
+    const host = new NativeHost({
+      createTerminal: () => terminal,
+      send: (message) => sent.push(message),
+      bridgeHello
+    })
 
     host.accept({ type: 'create', sessionId: 'terminal-1' })
     host.accept({ type: 'input', sessionId: 'missing', data: 'pwd\r' })
@@ -217,7 +299,11 @@ describe('NativeHost', () => {
       throw new Error('spawn failed')
     }
     const sent: HostToPanelMessage[] = []
-    const host = new NativeHost({ createTerminal: () => terminal, send: (message) => sent.push(message) })
+    const host = new NativeHost({
+      createTerminal: () => terminal,
+      send: (message) => sent.push(message),
+      bridgeHello
+    })
 
     expect(() => host.accept({ type: 'create', sessionId: 'terminal-9' })).not.toThrow()
     expect(sent).toEqual([

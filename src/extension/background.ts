@@ -1,4 +1,4 @@
-import type { HostToPanelMessage } from '../shared/native-messages'
+import type { BridgeHelloMessage, HostToPanelMessage } from '../shared/native-messages'
 import { parseHostMessage, parsePanelMessage } from '../shared/native-messages'
 
 const PANEL_PORT_NAME = 'sideterm-panel'
@@ -6,6 +6,7 @@ const MAX_BUFFER_LENGTH = 200_000
 const panels = new Set<chrome.runtime.Port>()
 const outputBuffers = new Map<string, string>()
 let nativePort: chrome.runtime.Port | null = null
+let bridgeHello: BridgeHelloMessage | null = null
 
 void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch((error) => {
   console.error('Unable to configure SideTerm side panel:', error)
@@ -28,12 +29,14 @@ function connectNative(): chrome.runtime.Port {
   port.onMessage.addListener((value: unknown) => {
     const message = parseHostMessage(value)
     if (!message) return
+    if (message.type === 'hello') bridgeHello = message
     if (message.type === 'output') rememberOutput(message.sessionId, message.data)
     broadcast(message)
   })
   port.onDisconnect.addListener(() => {
     if (nativePort !== port) return
     nativePort = null
+    bridgeHello = null
     const detail = chrome.runtime.lastError?.message ?? 'Native terminal disconnected'
     broadcast({ type: 'error', message: detail })
   })
@@ -44,6 +47,7 @@ chrome.runtime.onConnect.addListener((panel) => {
   if (panel.name !== PANEL_PORT_NAME) return
   panels.add(panel)
   connectNative()
+  if (bridgeHello) panel.postMessage(bridgeHello)
 
   panel.onMessage.addListener((value: unknown) => {
     const message = parsePanelMessage(value)

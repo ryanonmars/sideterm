@@ -1,4 +1,24 @@
+export const SIDETERM_PROTOCOL_VERSION = 1
+
+export interface BridgeCapabilities {
+  pty: boolean
+  localShell: boolean
+  systemSsh: boolean
+}
+
+export interface BridgeHelloMessage {
+  type: 'hello'
+  bridgeVersion: string
+  protocolVersion: number
+  platform: string
+  activeShell: string
+  availableShells: string[]
+  capabilities: BridgeCapabilities
+  sessionId?: never
+}
+
 export type PanelToHostMessage =
+  | { type: 'hello'; protocolVersion: number; sessionId?: never }
   | { type: 'create'; sessionId: string }
   | { type: 'close'; sessionId: string }
   | { type: 'input'; sessionId: string; data: string }
@@ -6,6 +26,14 @@ export type PanelToHostMessage =
   | { type: 'restart'; sessionId: string }
 
 export type HostToPanelMessage =
+  | BridgeHelloMessage
+  | {
+      type: 'incompatible'
+      expectedProtocolVersion: number
+      receivedProtocolVersion: number
+      message: string
+      sessionId?: never
+    }
   | { type: 'ready'; sessionId: string }
   | { type: 'output'; sessionId: string; data: string }
   | { type: 'exit'; sessionId: string; exitCode: number; signal?: number }
@@ -19,10 +47,42 @@ function isSessionId(value: unknown): value is string {
   return typeof value === 'string' && /^[a-zA-Z0-9_-]{1,64}$/.test(value)
 }
 
-export function parsePanelMessage(value: unknown): PanelToHostMessage | null {
-  if (!isRecord(value) || typeof value.type !== 'string' || !isSessionId(value.sessionId)) {
+function isShortString(value: unknown, maxLength: number): value is string {
+  return typeof value === 'string' && value.length > 0 && value.length <= maxLength
+}
+
+function isProtocolVersion(value: unknown): value is number {
+  return Number.isInteger(value) && (value as number) >= 1 && (value as number) <= 65_535
+}
+
+function parseCapabilities(value: unknown): BridgeCapabilities | null {
+  if (!isRecord(value)) return null
+  if (
+    typeof value.pty !== 'boolean' ||
+    typeof value.localShell !== 'boolean' ||
+    typeof value.systemSsh !== 'boolean'
+  ) {
     return null
   }
+  return {
+    pty: value.pty,
+    localShell: value.localShell,
+    systemSsh: value.systemSsh
+  }
+}
+
+export function parsePanelMessage(value: unknown): PanelToHostMessage | null {
+  if (!isRecord(value) || typeof value.type !== 'string') {
+    return null
+  }
+
+  if (value.type === 'hello') {
+    return isProtocolVersion(value.protocolVersion)
+      ? { type: 'hello', protocolVersion: value.protocolVersion }
+      : null
+  }
+
+  if (!isSessionId(value.sessionId)) return null
   const sessionId = value.sessionId
 
   if (value.type === 'create' || value.type === 'close' || value.type === 'restart') {
@@ -52,6 +112,47 @@ export function parsePanelMessage(value: unknown): PanelToHostMessage | null {
 
 export function parseHostMessage(value: unknown): HostToPanelMessage | null {
   if (!isRecord(value) || typeof value.type !== 'string') return null
+
+  if (value.type === 'hello') {
+    const capabilities = parseCapabilities(value.capabilities)
+    if (
+      !isShortString(value.bridgeVersion, 64) ||
+      !isProtocolVersion(value.protocolVersion) ||
+      !isShortString(value.platform, 64) ||
+      !isShortString(value.activeShell, 1_024) ||
+      !Array.isArray(value.availableShells) ||
+      value.availableShells.length > 64 ||
+      !value.availableShells.every((shell) => isShortString(shell, 1_024)) ||
+      !capabilities
+    ) {
+      return null
+    }
+    return {
+      type: 'hello',
+      bridgeVersion: value.bridgeVersion,
+      protocolVersion: value.protocolVersion,
+      platform: value.platform,
+      activeShell: value.activeShell,
+      availableShells: [...new Set(value.availableShells as string[])],
+      capabilities
+    }
+  }
+
+  if (value.type === 'incompatible') {
+    if (
+      !isProtocolVersion(value.expectedProtocolVersion) ||
+      !isProtocolVersion(value.receivedProtocolVersion) ||
+      !isShortString(value.message, 1_024)
+    ) {
+      return null
+    }
+    return {
+      type: 'incompatible',
+      expectedProtocolVersion: value.expectedProtocolVersion,
+      receivedProtocolVersion: value.receivedProtocolVersion,
+      message: value.message
+    }
+  }
 
   if (value.type === 'error') {
     if (typeof value.message !== 'string' || value.message.length === 0) return null

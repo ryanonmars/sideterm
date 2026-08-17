@@ -1,3 +1,4 @@
+import { createBridgeHello } from './bridge-info'
 import { NativeHost } from './native-host'
 import { NativeMessageDecoder, encodeNativeMessage } from './native-protocol'
 import { TerminalSession } from './terminal-session'
@@ -5,8 +6,10 @@ import { TerminalSession } from './terminal-session'
 const decoder = new NativeMessageDecoder()
 const host = new NativeHost({
   createTerminal: () => new TerminalSession(),
-  send: (message) => process.stdout.write(encodeNativeMessage(message))
+  send: (message) => process.stdout.write(encodeNativeMessage(message)),
+  bridgeHello: createBridgeHello()
 })
+host.announce()
 let stopping = false
 
 function stop(exitCode = 0): void {

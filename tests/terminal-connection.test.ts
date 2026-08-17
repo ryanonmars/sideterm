@@ -7,6 +7,8 @@ import {
 } from '../src/extension/terminal-connection'
 import type { HostToPanelMessage } from '../src/shared/native-messages'
 
+const hello = { type: 'hello', protocolVersion: 1 }
+
 class FakeEvent<T extends (...args: never[]) => void> implements PortEvent<T> {
   private listeners: T[] = []
 
@@ -68,9 +70,38 @@ describe('TerminalConnection', () => {
     port.onMessage.emit({ type: 'output', sessionId: 'terminal-1', data: '/Users/test\r\n' })
     port.onMessage.emit({ type: 'bogus' })
 
-    expect(port.messages).toEqual([{ type: 'input', sessionId: 'terminal-1', data: 'pwd\r' }])
+    expect(port.messages).toEqual([
+      hello,
+      { type: 'input', sessionId: 'terminal-1', data: 'pwd\r' }
+    ])
     expect(received).toEqual([
       { type: 'output', sessionId: 'terminal-1', data: '/Users/test\r\n' }
+    ])
+  })
+
+  it('exposes session-oriented backend operations', () => {
+    const port = new FakePort()
+    const connection = new TerminalConnection({
+      connectPort: () => port,
+      onMessage: () => undefined,
+      onState: () => undefined,
+      onError: () => undefined
+    })
+
+    connection.connect()
+    connection.createSession('terminal-1')
+    connection.write('terminal-1', 'ssh production\r')
+    connection.resize('terminal-1', 120, 40)
+    connection.restartSession('terminal-1')
+    connection.closeSession('terminal-1')
+
+    expect(port.messages).toEqual([
+      hello,
+      { type: 'create', sessionId: 'terminal-1' },
+      { type: 'input', sessionId: 'terminal-1', data: 'ssh production\r' },
+      { type: 'resize', sessionId: 'terminal-1', cols: 120, rows: 40 },
+      { type: 'restart', sessionId: 'terminal-1' },
+      { type: 'close', sessionId: 'terminal-1' }
     ])
   })
 
@@ -92,7 +123,7 @@ describe('TerminalConnection', () => {
 
     expect(states).toEqual(['connecting', 'disconnected'])
     expect(errors).toEqual(['Specified native messaging host not found.'])
-    expect(port.messages).toEqual([])
+    expect(port.messages).toEqual([hello])
   })
 
   it('disconnects an existing port before replacing or closing it', () => {

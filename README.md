@@ -8,11 +8,11 @@
   A real terminal in your browser's resizable side panel.
 </p>
 
-SideTerm keeps a full terminal beside your normal browser tabs, so you can code with AI, run development tools, or monitor a process without covering the page you are using. Your browser still handles websites, accounts, extensions, streaming, media codecs, and DRM normally.
+SideTerm keeps a full terminal beside your normal browser tabs, so you can code with AI, run development tools, or monitor a process without covering the page you are using.
 
 ## Features
 
-- A real macOS login shell powered by a local native helper
+- A real macOS login shell powered by SideTerm Bridge
 - Multiple terminal tabs with custom names
 - Side-by-side or top-and-bottom terminal stacks
 - Resizable using the browser's standard side-panel controls
@@ -22,11 +22,11 @@ SideTerm keeps a full terminal beside your normal browser tabs, so you can code 
 ## Install
 
 1. [Add SideTerm from the Chrome Web Store](https://chromewebstore.google.com/detail/sideterm/iibepfapncodkkpognfeamilpdkoimbe).
-2. Download and run the macOS SideTerm Helper from the [latest release](https://github.com/ryanonmars/sideterm/releases/latest).
-3. Restart Chrome or Brave after installing the helper.
-4. Pin SideTerm to the toolbar and click its icon to open the side panel.
+2. Open SideTerm and choose **Install SideTerm Bridge**.
+3. Run the downloaded macOS installer, then return to SideTerm and choose **Reconnect**.
+4. Pin SideTerm to the toolbar for quick access.
 
-SideTerm currently supports macOS. The [native helper](https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging) is required because browser extensions cannot launch a real local shell by themselves.
+SideTerm currently supports macOS. [SideTerm Bridge](https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging) connects the browser side panel to your local shell.
 
 ## Using SideTerm
 
@@ -40,12 +40,12 @@ Each new terminal starts in your home folder using your configured login shell. 
 
 ## Privacy and security
 
-SideTerm does not inject scripts into websites and does not request permission to read page content or browsing history. Terminal input and output stay between the extension and the local SideTerm Helper. Programs you run inside the terminal retain their own network and privacy behavior.
+SideTerm does not inject scripts into websites and does not request permission to read page content or browsing history. Terminal input and output stay between the extension and SideTerm Bridge on your Mac. Programs you run inside the terminal retain their own network and privacy behavior.
 
 ## Troubleshooting
 
-- **Specified native messaging host not found:** reinstall the SideTerm Helper, restart the browser, and click **Reconnect**.
-- **Disconnected:** click **Reconnect**. If it disconnects again, reinstall the helper.
+- **SideTerm Bridge not found:** install or reinstall SideTerm Bridge, then click **Reconnect**.
+- **Disconnected:** click **Reconnect**. If it disconnects again, reinstall SideTerm Bridge.
 - **Shell exited:** click the restart icon on that terminal tab, or close it and create another terminal.
 
 ## Development

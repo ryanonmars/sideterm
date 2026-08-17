@@ -4,6 +4,10 @@ import { parseHostMessage, parsePanelMessage } from '../src/shared/native-messag
 
 describe('parsePanelMessage', () => {
   it('accepts session lifecycle, input, resize, and restart messages', () => {
+    expect(parsePanelMessage({ type: 'hello', protocolVersion: 1 })).toEqual({
+      type: 'hello',
+      protocolVersion: 1
+    })
     expect(parsePanelMessage({ type: 'create', sessionId: 'terminal-1' })).toEqual({
       type: 'create',
       sessionId: 'terminal-1'
@@ -35,12 +39,45 @@ describe('parsePanelMessage', () => {
     expect(parsePanelMessage({ type: 'create', sessionId: '../unsafe' })).toBeNull()
     expect(parsePanelMessage({ type: 'input', data: 'missing session' })).toBeNull()
     expect(parsePanelMessage({ type: 'command', data: 'rm' })).toBeNull()
+    expect(parsePanelMessage({ type: 'hello', protocolVersion: 0 })).toBeNull()
     expect(parsePanelMessage(null)).toBeNull()
   })
 })
 
 describe('parseHostMessage', () => {
   it('accepts host status, output, exit, and error messages', () => {
+    expect(
+      parseHostMessage({
+        type: 'hello',
+        bridgeVersion: '1.2.3',
+        protocolVersion: 1,
+        platform: 'macOS',
+        activeShell: '/bin/zsh',
+        availableShells: ['/bin/zsh', '/bin/bash'],
+        capabilities: { pty: true, localShell: true, systemSsh: true }
+      })
+    ).toEqual({
+      type: 'hello',
+      bridgeVersion: '1.2.3',
+      protocolVersion: 1,
+      platform: 'macOS',
+      activeShell: '/bin/zsh',
+      availableShells: ['/bin/zsh', '/bin/bash'],
+      capabilities: { pty: true, localShell: true, systemSsh: true }
+    })
+    expect(
+      parseHostMessage({
+        type: 'incompatible',
+        expectedProtocolVersion: 1,
+        receivedProtocolVersion: 2,
+        message: 'Unsupported SideTerm protocol version 2'
+      })
+    ).toEqual({
+      type: 'incompatible',
+      expectedProtocolVersion: 1,
+      receivedProtocolVersion: 2,
+      message: 'Unsupported SideTerm protocol version 2'
+    })
     expect(parseHostMessage({ type: 'ready', sessionId: 'terminal-1' })).toEqual({
       type: 'ready',
       sessionId: 'terminal-1'
@@ -71,5 +108,24 @@ describe('parseHostMessage', () => {
     expect(parseHostMessage({ type: 'output', sessionId: 'terminal-1', data: 42 })).toBeNull()
     expect(parseHostMessage({ type: 'exit', sessionId: 'terminal-1', exitCode: Number.NaN })).toBeNull()
     expect(parseHostMessage({ type: 'error', message: '' })).toBeNull()
+    expect(
+      parseHostMessage({
+        type: 'hello',
+        bridgeVersion: '1.2.3',
+        protocolVersion: 1,
+        platform: 'macOS',
+        activeShell: '/bin/zsh',
+        availableShells: ['/bin/zsh'],
+        capabilities: { pty: true, localShell: 'yes', systemSsh: true }
+      })
+    ).toBeNull()
+    expect(
+      parseHostMessage({
+        type: 'incompatible',
+        expectedProtocolVersion: 0,
+        receivedProtocolVersion: 1,
+        message: 'bad version'
+      })
+    ).toBeNull()
   })
 })

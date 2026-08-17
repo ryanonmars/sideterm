@@ -1,7 +1,8 @@
 import { FitAddon } from '@xterm/addon-fit'
 import { Terminal } from '@xterm/xterm'
 
-import type { HostToPanelMessage } from '../shared/native-messages'
+import type { BridgeHelloMessage, HostToPanelMessage } from '../shared/native-messages'
+import { classifyBridgeError } from './bridge-status'
 import { TerminalConnection } from './terminal-connection'
 import { TerminalWorkspaceState, type TerminalTab } from './workspace-state'
 import { loadWorkspace, saveWorkspace } from './workspace-storage'
@@ -28,12 +29,38 @@ const columnsButton = document.querySelector<HTMLButtonElement>('#layout-columns
 const rowsButton = document.querySelector<HTMLButtonElement>('#layout-rows')!
 const terminalStatus = document.querySelector<HTMLElement>('#terminal-status')!
 const reconnectButton = document.querySelector<HTMLButtonElement>('#reconnect-button')!
+const toolbarElement = document.querySelector<HTMLElement>('.terminal-toolbar')!
+const bridgeOnboarding = document.querySelector<HTMLElement>('#bridge-onboarding')!
+const installBridgeLink = document.querySelector<HTMLAnchorElement>('#install-bridge')!
+const checkBridgeButton = document.querySelector<HTMLButtonElement>('#check-bridge')!
+const bridgeDetail = document.querySelector<HTMLElement>('#bridge-detail')!
+const settingsDialog = document.querySelector<HTMLDialogElement>('#settings-dialog')!
+const openSettingsButton = document.querySelector<HTMLButtonElement>('#open-settings')!
+const closeSettingsButton = document.querySelector<HTMLButtonElement>('#close-settings')!
+const settingsReconnectButton = document.querySelector<HTMLButtonElement>('#settings-reconnect')!
+const settingsStatus = document.querySelector<HTMLElement>('#settings-status')!
+const settingsPlatform = document.querySelector<HTMLElement>('#settings-platform')!
+const settingsShell = document.querySelector<HTMLElement>('#settings-shell')!
+const settingsBridgeVersion = document.querySelector<HTMLElement>('#settings-bridge-version')!
+const settingsProtocolVersion = document.querySelector<HTMLElement>('#settings-protocol-version')!
+const settingsSsh = document.querySelector<HTMLElement>('#settings-ssh')!
 
 const state = new TerminalWorkspaceState()
 const views = new Map<string, TerminalView>()
 let nextSessionNumber = 1
 let focusedId: string | null = null
 let layoutFrame = 0
+let bridgeInfo: BridgeHelloMessage | null = null
+
+function renderBridgeSettings(status = bridgeInfo ? 'Connected' : 'Not connected'): void {
+  settingsStatus.textContent = status
+  settingsStatus.classList.toggle('status-connected', status === 'Connected')
+  settingsPlatform.textContent = bridgeInfo?.platform ?? '—'
+  settingsShell.textContent = bridgeInfo?.activeShell ?? '—'
+  settingsBridgeVersion.textContent = bridgeInfo?.bridgeVersion ?? '—'
+  settingsProtocolVersion.textContent = bridgeInfo ? String(bridgeInfo.protocolVersion) : '—'
+  settingsSsh.textContent = bridgeInfo ? (bridgeInfo.capabilities.systemSsh ? 'Available' : 'Not found') : '—'
+}
 
 function stackIcon(stacked: boolean): string {
   if (stacked) {
@@ -99,6 +126,25 @@ function showReconnect(status: string): void {
   reconnectButton.hidden = false
 }
 
+function showBridgeOnboarding(detail: string, updateRequired = false): void {
+  document.body.classList.add('bridge-setup')
+  toolbarElement.hidden = true
+  workspaceElement.hidden = true
+  bridgeOnboarding.hidden = false
+  bridgeDetail.textContent = detail
+  installBridgeLink.textContent = updateRequired ? 'Update SideTerm Bridge' : 'Install SideTerm Bridge'
+  terminalStatus.hidden = true
+  reconnectButton.hidden = true
+}
+
+function showTerminalWorkspace(): void {
+  document.body.classList.remove('bridge-setup')
+  bridgeOnboarding.hidden = true
+  toolbarElement.hidden = false
+  workspaceElement.hidden = false
+  bridgeDetail.textContent = ''
+}
+
 function scheduleFit(): void {
   if (layoutFrame) cancelAnimationFrame(layoutFrame)
   layoutFrame = requestAnimationFrame(() => {
@@ -107,12 +153,7 @@ function scheduleFit(): void {
       const view = views.get(id)
       if (!view) continue
       view.fitAddon.fit()
-      connection.send({
-        type: 'resize',
-        sessionId: id,
-        cols: view.terminal.cols,
-        rows: view.terminal.rows
-      })
+      connection.resize(id, view.terminal.cols, view.terminal.rows)
     }
   })
 }
@@ -256,7 +297,7 @@ function createTabElement(tab: TerminalTab): {
   restartButton.title = `Restart ${tab.title}`
   restartButton.setAttribute('aria-label', `Restart ${tab.title}`)
   restartButton.addEventListener('click', () => {
-    connection.send({ type: 'restart', sessionId: tab.id })
+    connection.restartSession(tab.id)
   })
 
   element.append(selectButton, renameInput, renameButton, pinButton, restartButton, closeButton)
@@ -303,12 +344,10 @@ function mountTerminal(tab: TerminalTab): void {
   tabsElement.append(tabControls.element)
   workspaceElement.append(pane)
   terminal.open(surface)
-  terminal.onData((data) => connection.send({ type: 'input', sessionId: id, data }))
-  terminal.onResize(({ cols, rows }) =>
-    connection.send({ type: 'resize', sessionId: id, cols, rows })
-  )
+  terminal.onData((data) => connection.write(id, data))
+  terminal.onResize(({ cols, rows }) => connection.resize(id, cols, rows))
 
-  connection.send({ type: 'create', sessionId: id })
+  connection.createSession(id)
 }
 
 function addTerminal(): void {
@@ -325,7 +364,7 @@ function closeTerminal(id: string): void {
   if (state.tabs.length <= 1) return
   const view = views.get(id)
   if (!view) return
-  connection.send({ type: 'close', sessionId: id })
+  connection.closeSession(id)
   view.terminal.dispose()
   view.pane.remove()
   view.tabElement.remove()
@@ -337,8 +376,27 @@ function closeTerminal(id: string): void {
 }
 
 function handleHostMessage(message: HostToPanelMessage): void {
+  if (message.type === 'hello') {
+    bridgeInfo = message
+    renderBridgeSettings()
+    showTerminalWorkspace()
+    scheduleFit()
+    return
+  }
+  if (message.type === 'incompatible') {
+    bridgeInfo = null
+    renderBridgeSettings('Update required')
+    showBridgeOnboarding('Your installed Bridge is not compatible with this version of SideTerm.', true)
+    return
+  }
   if (message.type === 'error' && !message.sessionId) {
-    showReconnect(message.message)
+    bridgeInfo = null
+    renderBridgeSettings('Not connected')
+    if (classifyBridgeError(message.message) === 'missing') {
+      showBridgeOnboarding('SideTerm Bridge is not installed or could not be found.')
+    } else {
+      showReconnect(message.message)
+    }
     return
   }
   if (!message.sessionId) return
@@ -365,18 +423,34 @@ const connection = new TerminalConnection({
   onMessage: handleHostMessage,
   onState: (connectionState) => {
     if (connectionState === 'connecting') {
+      renderBridgeSettings('Checking…')
       terminalStatus.hidden = true
       reconnectButton.hidden = true
     } else if (connectionState === 'connected') {
+      showTerminalWorkspace()
       terminalStatus.hidden = true
       reconnectButton.hidden = true
       scheduleFit()
     } else if (reconnectButton.hidden) {
+      bridgeInfo = null
+      renderBridgeSettings('Not connected')
       showReconnect('Disconnected')
     }
   },
-  onError: (message) => showReconnect(message)
+  onError: (message) => {
+    if (classifyBridgeError(message) === 'missing') {
+      showBridgeOnboarding('SideTerm Bridge is not installed or could not be found.')
+    } else {
+      showReconnect(message)
+    }
+  }
 })
+
+function reconnectBridge(): void {
+  if (!bridgeOnboarding.hidden) bridgeDetail.textContent = 'Checking for SideTerm Bridge…'
+  connection.connect()
+  for (const tab of state.tabs) connection.createSession(tab.id)
+}
 
 addButton.addEventListener('click', addTerminal)
 columnsButton.addEventListener('click', () => {
@@ -389,10 +463,14 @@ rowsButton.addEventListener('click', () => {
   persistWorkspace()
   renderWorkspace()
 })
-reconnectButton.addEventListener('click', () => {
-  connection.connect()
-  for (const tab of state.tabs) connection.send({ type: 'create', sessionId: tab.id })
+reconnectButton.addEventListener('click', reconnectBridge)
+checkBridgeButton.addEventListener('click', reconnectBridge)
+openSettingsButton.addEventListener('click', () => {
+  renderBridgeSettings()
+  settingsDialog.showModal()
 })
+closeSettingsButton.addEventListener('click', () => settingsDialog.close())
+settingsReconnectButton.addEventListener('click', reconnectBridge)
 window.addEventListener('pagehide', () => connection.disconnect())
 new ResizeObserver(scheduleFit).observe(workspaceElement)
 
