@@ -1,13 +1,19 @@
 import type { BridgeHelloMessage, HostToPanelMessage } from '../shared/native-messages'
-import { parsePanelMessage } from '../shared/native-messages'
+import { MAX_TERMINAL_SESSIONS, parsePanelMessage } from '../shared/native-messages'
 import type { TerminalCallbacks } from './terminal-session'
 
 export interface TerminalController {
   start(callbacks: TerminalCallbacks): void
   write(data: string): void
   resize(cols: number, rows: number): void
+  pause(): void
+  resume(): void
   dispose(): void
 }
+
+// This remains comfortably below Chrome's 1 MiB native-messaging frame limit,
+// including worst-case JSON escaping of every JavaScript character.
+const MAX_TERMINAL_OUTPUT_CHARS = 64_000
 
 interface NativeHostOptions {
   createTerminal(): TerminalController
@@ -18,6 +24,8 @@ interface NativeHostOptions {
 export class NativeHost {
   private readonly sessions = new Map<string, TerminalController>()
   private incompatibleProtocol: number | null = null
+  private handshakeComplete = false
+  private outputPaused = false
 
   constructor(private readonly options: NativeHostOptions) {}
 
@@ -34,6 +42,7 @@ export class NativeHost {
 
     if (message.type === 'hello') {
       if (message.protocolVersion !== this.options.bridgeHello.protocolVersion) {
+        this.handshakeComplete = false
         this.incompatibleProtocol = message.protocolVersion
         this.options.send({
           type: 'incompatible',
@@ -44,6 +53,7 @@ export class NativeHost {
         return
       }
       this.incompatibleProtocol = null
+      this.handshakeComplete = true
       this.announce()
       return
     }
@@ -55,6 +65,11 @@ export class NativeHost {
         receivedProtocolVersion: this.incompatibleProtocol,
         message: 'Update SideTerm or SideTerm Bridge before opening a terminal'
       })
+      return
+    }
+
+    if (!this.handshakeComplete) {
+      this.options.send({ type: 'error', message: 'SideTerm Bridge handshake required' })
       return
     }
 
@@ -87,10 +102,31 @@ export class NativeHost {
     this.sessions.clear()
   }
 
+  pauseOutput(): void {
+    if (this.outputPaused) return
+    this.outputPaused = true
+    for (const terminal of this.sessions.values()) terminal.pause()
+  }
+
+  resumeOutput(): void {
+    if (!this.outputPaused) return
+    this.outputPaused = false
+    for (const terminal of this.sessions.values()) terminal.resume()
+  }
+
   private create(sessionId: string): void {
     const existing = this.sessions.get(sessionId)
     if (existing) {
       this.options.send({ type: 'ready', sessionId })
+      return
+    }
+
+    if (this.sessions.size >= MAX_TERMINAL_SESSIONS) {
+      this.options.send({
+        type: 'error',
+        sessionId,
+        message: `Terminal limit reached (${MAX_TERMINAL_SESSIONS})`
+      })
       return
     }
 
@@ -111,7 +147,13 @@ export class NativeHost {
       terminal.start({
         onData: (data) => {
           if (this.sessions.get(sessionId) === terminal) {
-            this.options.send({ type: 'output', sessionId, data })
+            for (let offset = 0; offset < data.length; offset += MAX_TERMINAL_OUTPUT_CHARS) {
+              this.options.send({
+                type: 'output',
+                sessionId,
+                data: data.slice(offset, offset + MAX_TERMINAL_OUTPUT_CHARS)
+              })
+            }
           }
         },
         onExit: (event) => {
@@ -120,6 +162,7 @@ export class NativeHost {
           }
         }
       })
+      if (this.outputPaused) terminal.pause()
       this.options.send({ type: 'ready', sessionId })
     } catch (error) {
       const detail = error instanceof Error ? error.message : String(error)

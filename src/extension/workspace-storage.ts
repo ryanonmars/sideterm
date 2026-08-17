@@ -1,4 +1,5 @@
 import type { TerminalWorkspaceSnapshot } from './workspace-state'
+import { MAX_TERMINAL_SESSIONS } from '../shared/native-messages'
 
 const STORAGE_KEY = 'sideterm-workspace'
 const LEGACY_STORAGE_KEY = 'termside-workspace'
@@ -13,7 +14,7 @@ function isSnapshot(value: unknown): value is TerminalWorkspaceSnapshot {
   const candidate = value as Record<string, unknown>
   if (candidate.layout !== 'columns' && candidate.layout !== 'rows') return false
   if (candidate.activeId !== null && typeof candidate.activeId !== 'string') return false
-  if (!Array.isArray(candidate.tabs)) return false
+  if (!Array.isArray(candidate.tabs) || candidate.tabs.length > MAX_TERMINAL_SESSIONS) return false
 
   const ids = new Set<string>()
   for (const tab of candidate.tabs) {
@@ -21,10 +22,12 @@ function isSnapshot(value: unknown): value is TerminalWorkspaceSnapshot {
     const item = tab as Record<string, unknown>
     if (
       typeof item.id !== 'string' ||
+      item.id.length > 64 ||
       !/^terminal-\d+$/.test(item.id) ||
       ids.has(item.id) ||
       typeof item.title !== 'string' ||
       item.title.length === 0 ||
+      item.title.length > 48 ||
       typeof item.pinned !== 'boolean' ||
       (item.customTitle !== undefined && typeof item.customTitle !== 'boolean')
     ) {

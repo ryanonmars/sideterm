@@ -1,3 +1,5 @@
+import { MAX_TERMINAL_SESSIONS } from '../shared/native-messages'
+
 export type LayoutDirection = 'columns' | 'rows'
 
 export interface TerminalTab {
@@ -25,6 +27,9 @@ export class TerminalWorkspaceState {
   }
 
   add(id: string): TerminalTab {
+    if (this.tabs.length >= MAX_TERMINAL_SESSIONS) {
+      throw new RangeError(`Terminal limit reached (${MAX_TERMINAL_SESSIONS})`)
+    }
     const tab = { id, title: `Terminal ${this.tabs.length + 1}`, pinned: false }
     this.tabs.push(tab)
     this.activeId = id
@@ -32,7 +37,11 @@ export class TerminalWorkspaceState {
   }
 
   restore(snapshot: TerminalWorkspaceSnapshot): void {
-    this.tabs.splice(0, this.tabs.length, ...snapshot.tabs.map((tab) => ({ ...tab })))
+    this.tabs.splice(
+      0,
+      this.tabs.length,
+      ...snapshot.tabs.slice(0, MAX_TERMINAL_SESSIONS).map((tab) => ({ ...tab }))
+    )
     this.activeId = this.tabs.some((tab) => tab.id === snapshot.activeId)
       ? snapshot.activeId
       : (this.tabs.at(-1)?.id ?? null)
@@ -66,7 +75,7 @@ export class TerminalWorkspaceState {
 
   rename(id: string, title: string): boolean {
     const tab = this.tabs.find((candidate) => candidate.id === id)
-    const nextTitle = title.trim()
+    const nextTitle = title.trim().slice(0, 48)
     if (!tab || !nextTitle) return false
     tab.title = nextTitle
     tab.customTitle = true

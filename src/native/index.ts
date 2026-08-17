@@ -4,11 +4,15 @@ import { NativeMessageDecoder, encodeNativeMessage } from './native-protocol'
 import { TerminalSession } from './terminal-session'
 
 const decoder = new NativeMessageDecoder()
-const host = new NativeHost({
+let host: NativeHost
+host = new NativeHost({
   createTerminal: () => new TerminalSession(),
-  send: (message) => process.stdout.write(encodeNativeMessage(message)),
+  send: (message) => {
+    if (!process.stdout.write(encodeNativeMessage(message))) host.pauseOutput()
+  },
   bridgeHello: createBridgeHello()
 })
+process.stdout.on('drain', () => host.resumeOutput())
 host.announce()
 let stopping = false
 
@@ -17,6 +21,7 @@ function stop(exitCode = 0): void {
   stopping = true
   host.dispose()
   process.exitCode = exitCode
+  process.stdin.destroy()
 }
 
 process.stdin.on('data', (chunk: Buffer) => {

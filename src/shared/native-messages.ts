@@ -1,4 +1,5 @@
 export const SIDETERM_PROTOCOL_VERSION = 1
+export const MAX_TERMINAL_SESSIONS = 16
 
 export interface BridgeCapabilities {
   pty: boolean

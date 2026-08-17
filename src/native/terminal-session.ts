@@ -16,6 +16,8 @@ export interface PtyProcess {
   onExit(listener: (event: TerminalExit) => void): Disposable
   write(data: string): void
   resize(cols: number, rows: number): void
+  pause(): void
+  resume(): void
   kill(): void
 }
 
@@ -97,6 +99,14 @@ export class TerminalSession {
     const safeColumns = Math.min(500, Math.max(2, Math.floor(cols)))
     const safeRows = Math.min(500, Math.max(1, Math.floor(rows)))
     this.process?.resize(safeColumns, safeRows)
+  }
+
+  pause(): void {
+    this.process?.pause()
+  }
+
+  resume(): void {
+    this.process?.resume()
   }
 
   dispose(): void {

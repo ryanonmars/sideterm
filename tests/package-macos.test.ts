@@ -1,14 +1,21 @@
+import { chmod, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import os from 'node:os'
+import { join } from 'node:path'
+
 import { describe, expect, it } from 'vitest'
 
 import {
   BRIDGE_IDENTIFIER,
   EXTENSION_ID,
   INSTALL_ROOT,
+  assertPrivateKeyPermissions,
+  assertReleaseCredentials,
   createDistributionXml,
   createLauncher,
   createNativeMessagingManifest,
   notarytoolCredentialArgs,
-  nativeMessagingManifestPaths
+  nativeMessagingManifestPaths,
+  validateBridgeVersion
 } from '../scripts/package-macos.mjs'
 
 describe('macOS Bridge packaging', () => {
@@ -62,5 +69,45 @@ describe('macOS Bridge packaging', () => {
       '--issuer',
       '11111111-2222-3333-4444-555555555555'
     ])
+  })
+
+  it('refuses release builds without signing and safe notarization credentials', () => {
+    expect(() => assertReleaseCredentials({})).toThrow('SIDETERM_CODESIGN_IDENTITY')
+    expect(() =>
+      assertReleaseCredentials({
+        SIDETERM_CODESIGN_IDENTITY: 'Developer ID Application',
+        SIDETERM_INSTALLER_IDENTITY: 'Developer ID Installer',
+        APPLE_ID: 'developer@example.com',
+        APPLE_TEAM_ID: 'TEAMID',
+        APPLE_APP_PASSWORD: 'must-not-be-passed-on-the-command-line'
+      })
+    ).toThrow('notary key or keychain profile')
+    expect(() =>
+      assertReleaseCredentials({
+        SIDETERM_CODESIGN_IDENTITY: 'Developer ID Application',
+        SIDETERM_INSTALLER_IDENTITY: 'Developer ID Installer',
+        SIDETERM_NOTARY_PROFILE: 'SideTerm'
+      })
+    ).not.toThrow()
+  })
+
+  it('rejects notarization keys readable by other local users', async () => {
+    const directory = await mkdtemp(join(os.tmpdir(), 'sideterm-key-test-'))
+    const keyPath = join(directory, 'AuthKey_TEST.p8')
+    try {
+      await writeFile(keyPath, 'private test material', { mode: 0o644 })
+      await expect(assertPrivateKeyPermissions(keyPath)).rejects.toThrow('mode 600')
+      await chmod(keyPath, 0o600)
+      await expect(assertPrivateKeyPermissions(keyPath)).resolves.toBeUndefined()
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it('rejects release versions that could escape paths or alter installer XML', () => {
+    expect(validateBridgeVersion('1.2.3')).toBe('1.2.3')
+    expect(() => validateBridgeVersion('../../tmp/bridge')).toThrow('major.minor.patch')
+    expect(() => validateBridgeVersion('1.2.3</pkg-ref>')).toThrow('major.minor.patch')
+    expect(() => validateBridgeVersion('v1.2.3')).toThrow('major.minor.patch')
   })
 })

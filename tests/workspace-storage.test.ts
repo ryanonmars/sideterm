@@ -53,6 +53,33 @@ describe('workspace storage', () => {
     expect(loadWorkspace(storage)).toBeNull()
   })
 
+  it('rejects oversized workspaces and terminal names', () => {
+    const storage = new MemoryStorage()
+    storage.values.set(
+      'sideterm-workspace',
+      JSON.stringify({
+        tabs: Array.from({ length: 17 }, (_, index) => ({
+          id: `terminal-${index + 1}`,
+          title: 'Terminal',
+          pinned: false
+        })),
+        activeId: 'terminal-1',
+        layout: 'columns'
+      })
+    )
+    expect(loadWorkspace(storage)).toBeNull()
+
+    storage.values.set(
+      'sideterm-workspace',
+      JSON.stringify({
+        tabs: [{ id: 'terminal-1', title: 'x'.repeat(49), pinned: false }],
+        activeId: 'terminal-1',
+        layout: 'columns'
+      })
+    )
+    expect(loadWorkspace(storage)).toBeNull()
+  })
+
   it('restores workspace state saved under the previous product name', () => {
     const storage = new MemoryStorage()
     const snapshot = {

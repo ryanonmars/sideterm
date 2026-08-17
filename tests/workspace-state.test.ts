@@ -94,6 +94,13 @@ describe('TerminalWorkspaceState', () => {
     expect(state.layout).toBe('rows')
   })
 
+  it('caps the number of terminal sessions', () => {
+    const state = new TerminalWorkspaceState()
+    for (let index = 1; index <= 16; index += 1) state.add(`terminal-${index}`)
+
+    expect(() => state.add('terminal-17')).toThrow('Terminal limit reached (16)')
+  })
+
   it('restores tabs, selection, pins, and layout from a snapshot', () => {
     const state = new TerminalWorkspaceState()
     state.restore({

@@ -1,7 +1,11 @@
 import { FitAddon } from '@xterm/addon-fit'
 import { Terminal } from '@xterm/xterm'
 
-import type { BridgeHelloMessage, HostToPanelMessage } from '../shared/native-messages'
+import {
+  MAX_TERMINAL_SESSIONS,
+  type BridgeHelloMessage,
+  type HostToPanelMessage
+} from '../shared/native-messages'
 import { classifyBridgeError } from './bridge-status'
 import { isBridgeUpdateAvailable, RECOMMENDED_BRIDGE_VERSION } from './bridge-version'
 import { TerminalConnection } from './terminal-connection'
@@ -266,6 +270,8 @@ function renderWorkspace(): void {
   workspaceElement.style.setProperty('--pane-count', String(Math.max(1, visible.size)))
   columnsButton.setAttribute('aria-pressed', String(state.layout === 'columns'))
   rowsButton.setAttribute('aria-pressed', String(state.layout === 'rows'))
+  addButton.disabled = state.tabs.length >= MAX_TERMINAL_SESSIONS
+  addButton.title = addButton.disabled ? `Terminal limit reached (${MAX_TERMINAL_SESSIONS})` : 'New terminal'
   scheduleFit()
 }
 
@@ -425,6 +431,7 @@ function mountTerminal(tab: TerminalTab): void {
 }
 
 function addTerminal(): void {
+  if (state.tabs.length >= MAX_TERMINAL_SESSIONS) return
   const id = `terminal-${nextSessionNumber++}`
   const tab = state.add(id)
   focusedId = id

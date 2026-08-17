@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process'
-import { access, chmod, copyFile, cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { access, chmod, copyFile, cp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -149,6 +149,14 @@ function signRuntime({ bridgeRoot, nodePtyTarget, prebuildName, identity }) {
   sign(join(nodePtyTarget, 'prebuilds', prebuildName, 'pty.node'))
   sign(join(nodePtyTarget, 'prebuilds', prebuildName, 'spawn-helper'), true)
   sign(join(bridgeRoot, 'bin/node'), true)
+
+  for (const path of [
+    join(nodePtyTarget, 'prebuilds', prebuildName, 'pty.node'),
+    join(nodePtyTarget, 'prebuilds', prebuildName, 'spawn-helper'),
+    join(bridgeRoot, 'bin/node')
+  ]) {
+    run('/usr/bin/codesign', ['--verify', '--strict', '--verbose=2', path])
+  }
 }
 
 export function notarytoolCredentialArgs(environment = process.env) {
@@ -162,14 +170,36 @@ export function notarytoolCredentialArgs(environment = process.env) {
   const profile = environment.SIDETERM_NOTARY_PROFILE
   if (profile) return ['--keychain-profile', profile]
 
-  const appleId = environment.APPLE_ID
-  const teamId = environment.APPLE_TEAM_ID
-  const password = environment.APPLE_APP_PASSWORD
-  if (appleId && teamId && password) {
-    return ['--apple-id', appleId, '--team-id', teamId, '--password', password]
-  }
-
   return null
+}
+
+export function assertReleaseCredentials(environment = process.env) {
+  if (!environment.SIDETERM_CODESIGN_IDENTITY) {
+    throw new Error('SIDETERM_CODESIGN_IDENTITY is required for a release package.')
+  }
+  if (!environment.SIDETERM_INSTALLER_IDENTITY) {
+    throw new Error('SIDETERM_INSTALLER_IDENTITY is required for a release package.')
+  }
+  if (!notarytoolCredentialArgs(environment)) {
+    throw new Error('A notary key or keychain profile is required for a release package.')
+  }
+}
+
+/** @param {unknown} version */
+export function validateBridgeVersion(version) {
+  if (typeof version !== 'string' || !/^\d+\.\d+\.\d+$/.test(version)) {
+    throw new Error('SideTerm Bridge version must use numeric major.minor.patch format.')
+  }
+  return version
+}
+
+/** @param {string} keyPath */
+export async function assertPrivateKeyPermissions(keyPath) {
+  const details = await stat(keyPath)
+  if (!details.isFile()) throw new Error('The notarization key must be a regular file.')
+  if ((details.mode & 0o077) !== 0) {
+    throw new Error('The notarization key must not be accessible to group or other users (use mode 600).')
+  }
 }
 
 /** @param {string} packagePath */
@@ -197,9 +227,13 @@ function notarize(packagePath) {
 
 export async function packageMacOS({ stageOnly = false } = {}) {
   if (process.platform !== 'darwin') throw new Error('The macOS Bridge package must be built on macOS.')
+  if (!stageOnly) assertReleaseCredentials()
+
+  const notaryKeyPath = process.env.SIDETERM_NOTARY_KEY_PATH
+  if (!stageOnly && notaryKeyPath) await assertPrivateKeyPermissions(notaryKeyPath)
 
   const project = JSON.parse(await readFile(resolve(repositoryRoot, 'package.json'), 'utf8'))
-  const version = process.env.SIDETERM_BRIDGE_VERSION || project.version
+  const version = validateBridgeVersion(process.env.SIDETERM_BRIDGE_VERSION || project.version)
   const architecture = process.arch
   const releaseRoot = resolve(repositoryRoot, 'release')
   const workRoot = join(releaseRoot, 'macos-work')
@@ -212,7 +246,7 @@ export async function packageMacOS({ stageOnly = false } = {}) {
   const stableOutputPath = join(releaseRoot, 'SideTermBridge.pkg')
 
   await rm(workRoot, { recursive: true, force: true })
-  await rm(stableOutputPath, { force: true })
+  if (!stageOnly) await rm(stableOutputPath, { force: true })
   await mkdir(payloadRoot, { recursive: true })
   await mkdir(packageRoot, { recursive: true })
 
@@ -260,11 +294,11 @@ export async function packageMacOS({ stageOnly = false } = {}) {
   run('/usr/bin/productbuild', productArgs)
 
   const notarized = notarize(outputPath)
+  run('/usr/sbin/spctl', ['-a', '-t', 'install', '-vv', outputPath])
   await copyFile(outputPath, stableOutputPath)
   console.log(`Created ${outputPath}`)
   console.log(`Created stable release asset ${stableOutputPath}`)
-  if (!installerIdentity) console.log('Package is unsigned (SIDETERM_INSTALLER_IDENTITY was not set).')
-  if (!notarized) console.log('Package was not notarized (notary credentials were not set).')
+  if (!notarized) throw new Error('Release package was not notarized.')
   return { payloadRoot, outputPath, stableOutputPath }
 }
 
