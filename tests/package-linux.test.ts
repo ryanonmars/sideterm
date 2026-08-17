@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  EXTENSION_ID,
+  DEVELOPMENT_EXTENSION_ID,
+  STORE_EXTENSION_ID,
   LINUX_INSTALL_ROOT,
   createDebianControl,
   createLinuxLauncher,
@@ -19,7 +20,10 @@ describe('Linux Bridge packaging', () => {
       description: 'SideTerm terminal host',
       path: `${LINUX_INSTALL_ROOT}/launch-host`,
       type: 'stdio',
-      allowed_origins: [`chrome-extension://${EXTENSION_ID}/`]
+      allowed_origins: [
+        `chrome-extension://${STORE_EXTENSION_ID}/`,
+        `chrome-extension://${DEVELOPMENT_EXTENSION_ID}/`
+      ]
     })
   })
 

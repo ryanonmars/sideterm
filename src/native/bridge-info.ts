@@ -6,7 +6,7 @@ import {
   type BridgeHelloMessage
 } from '../shared/native-messages'
 
-export const SIDETERM_BRIDGE_VERSION = process.env.SIDETERM_BRIDGE_VERSION || '0.1.1'
+export const SIDETERM_BRIDGE_VERSION = process.env.SIDETERM_BRIDGE_VERSION || '0.1.2'
 
 function canExecute(path: string): boolean {
   try {

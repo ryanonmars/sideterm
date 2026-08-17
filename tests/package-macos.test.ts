@@ -6,7 +6,8 @@ import { describe, expect, it } from 'vitest'
 
 import {
   BRIDGE_IDENTIFIER,
-  EXTENSION_ID,
+  DEVELOPMENT_EXTENSION_ID,
+  STORE_EXTENSION_ID,
   INSTALL_ROOT,
   assertPrivateKeyPermissions,
   assertReleaseCredentials,
@@ -31,7 +32,10 @@ describe('macOS Bridge packaging', () => {
       description: 'SideTerm terminal host',
       path: `${INSTALL_ROOT}/launch-host`,
       type: 'stdio',
-      allowed_origins: [`chrome-extension://${EXTENSION_ID}/`]
+      allowed_origins: [
+        `chrome-extension://${STORE_EXTENSION_ID}/`,
+        `chrome-extension://${DEVELOPMENT_EXTENSION_ID}/`
+      ]
     })
   })
 

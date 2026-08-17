@@ -7,7 +7,8 @@ import { fileURLToPath } from 'node:url'
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 
 export const NATIVE_HOST_NAME = 'com.termside.terminal'
-export const EXTENSION_ID = 'iibepfapncodkkpognfeamilpdkoimbe'
+export const DEVELOPMENT_EXTENSION_ID = 'iibepfapncodkkpognfeamilpdkoimbe'
+export const STORE_EXTENSION_ID = 'flkmmlbgcjdbfcekhhdjobinlljdifdn'
 export const LINUX_INSTALL_ROOT = '/opt/sideterm/bridge'
 
 /** @param {string} payloadRoot */
@@ -28,7 +29,10 @@ export function createLinuxNativeMessagingManifest() {
     description: 'SideTerm terminal host',
     path: `${LINUX_INSTALL_ROOT}/launch-host`,
     type: 'stdio',
-    allowed_origins: [`chrome-extension://${EXTENSION_ID}/`]
+    allowed_origins: [
+      `chrome-extension://${STORE_EXTENSION_ID}/`,
+      `chrome-extension://${DEVELOPMENT_EXTENSION_ID}/`
+    ]
   }
 }
 
