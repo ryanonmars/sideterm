@@ -21,7 +21,7 @@ SideTerm keeps a full terminal beside your normal browser tabs, so you can code 
 
 ## Install
 
-1. [Add SideTerm from the Chrome Web Store](https://chromewebstore.google.com/detail/sideterm/iibepfapncodkkpognfeamilpdkoimbe).
+1. [Add SideTerm from the Chrome Web Store](https://chromewebstore.google.com/detail/sideterm/flkmmlbgcjdbfcekhhdjobinlljdifdn).
 2. Open SideTerm and choose **Install SideTerm Bridge**.
 3. Install the downloaded macOS `.pkg`, Linux `.deb`, or Linux `.rpm`, then return to SideTerm and choose **Reconnect**.
 4. Pin SideTerm to the toolbar for quick access.
